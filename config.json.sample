@@ -1,0 +1,12 @@
+{
+  "_comment": "SAFE TEMPLATE. Copy to config.json (gitignored) and fill real values. NEVER commit config.json.",
+  "_howto": "Lấy wsUrl + auth từ HAR của remote.360auto.net (Developer Tools > Network > WS). SCRUB session/token khỏi HAR trước khi lưu/log/share.",
+  "wsUrl": "wss://remote.360auto.net/<ws-path-from-har>",
+  "headers": {
+    "Authorization": "Bearer <PASTE_TOKEN_HERE>",
+    "Cookie": "session=<PASTE_SESSION_HERE>"
+  },
+  "_auth_note": "Nếu Remote xác thực bằng message đầu thay vì header, để headers rỗng và điền authMessage bên dưới.",
+  "authMessage": null,
+  "subscribeMessage": "{\"t\":\"scr_list\"}"
+}
