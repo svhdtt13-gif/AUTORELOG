@@ -132,7 +132,7 @@ $DashboardHtml = @'
 <body>
 <h2>AUTORELOG Master Data</h2>
 <div id=win></div>
-<table id=tbl><thead><tr><th>client</th><th>name</th><th>group</th><th>desired</th><th>running</th><th>override</th><th>drift</th><th>action</th></tr></thead><tbody></tbody></table>
+<table id=tbl><thead><tr><th>client</th><th>name</th><th>group</th><th>desired</th><th>running</th><th>conn</th><th>override</th><th>drift</th><th>action</th></tr></thead><tbody></tbody></table>
 <h3>Add / Edit client</h3>
 <form id=f>
  client <input name=client placeholder=client_XX><br>
@@ -152,7 +152,7 @@ function load(){
   d.clients.forEach(c=>{
    var tr=document.createElement('tr');
    var dcls=c.drift&&c.drift!=='-'?'down':'';
-   tr.innerHTML='<td>'+c.client+'</td><td>'+c.name+'</td><td>'+c.group+'</td><td>'+c.desired+'</td><td class="'+(c.running?'up':'')+'">'+(c.running?'yes':'no')+'</td><td>'+(c.override||'-')+'</td><td class="'+dcls+'">'+(c.drift||'-')+'</td>';
+   tr.innerHTML='<td>'+c.client+'</td><td>'+c.name+'</td><td>'+c.group+'</td><td>'+c.desired+'</td><td class="'+(c.running?'up':'')+'">'+(c.running?'yes':'no')+'</td><td class="'+(c.connected?'up':'')+'">'+(c.connected?'yes':'no')+'</td><td>'+(c.override||'-')+'</td><td class="'+dcls+'">'+(c.drift||'-')+'</td>';
    var td=document.createElement('td');
    ['start','stop','restart'].forEach(a=>{var b=document.createElement('button');b.textContent=a;b.onclick=()=>ctrl(c.client,a);td.appendChild(b);});
    tr.appendChild(td); tb.appendChild(tr);
@@ -183,10 +183,12 @@ function Get-StatusJson() {
     $ovStr = $null
     if ($overrides.ContainsKey($cid) -and $now -lt $overrides[$cid].until) { $desired = $overrides[$cid].action; $ovStr = $overrides[$cid].action }
     $isRun = Test-InstanceRunning $cid
+    $isConn = if ($isRun) { Test-InstanceConnected $cid } else { $false }
     if ($desired -eq 'running' -and -not $isRun) { $dr = 'YES(up)' }
     elseif (($desired -eq 'stopped' -or $desired -eq 'blocked') -and $isRun) { $dr = 'YES(down)' }
+    elseif ($desired -eq 'running' -and $isRun -and -not $isConn) { $dr = 'YES(zombie)' }
     else { $dr = '-' }
-    $out.clients += [ordered]@{ client = $cid; name = [string]$c.name; group = [string]$c.group; desired = $desired; running = $isRun; override = $ovStr; drift = $dr }
+    $out.clients += [ordered]@{ client = $cid; name = [string]$c.name; group = [string]$c.group; desired = $desired; running = $isRun; connected = $isConn; override = $ovStr; drift = $dr }
   }
   return ($out | ConvertTo-Json -Depth 5)
 }
@@ -225,8 +227,10 @@ function Handle-Request($req, $resp) {
       if ($mins -le 0) { $mins = 60 }
       $map = Get-LaunchMap $ScenePath
       if ($action -eq 'stop') {
+        $pidv = $null
         $procs = Get-CimInstance Win32_Process -Filter "Name='qnyh.exe'" -ErrorAction SilentlyContinue
-        foreach ($p in $procs) { if ($p.CommandLine -and (($p.CommandLine -split '\s+') -contains "-instance:$cid")) { Stop-Process -Id $p.ProcessId -Force } }
+        foreach ($p in $procs) { if ($p.CommandLine -and (($p.CommandLine -split '\s+') -contains "-instance:$cid")) { $pidv = $p.ProcessId } }
+        if ($pidv) { Stop-Process -Id $pidv -Force }
         Write-Override $cid 'stopped' $mins
       } elseif ($action -eq 'start' -or $action -eq 'restart') {
         if ($action -eq 'restart') {
