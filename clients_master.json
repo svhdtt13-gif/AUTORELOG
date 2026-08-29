@@ -3,7 +3,7 @@
     "schemaVersion": "1.0",
     "timezone": "Asia/Ho_Chi_Minh",
     "source": "Derived from runtime_registry.json + lich trinh tat mo.xlsx (AUTORELOG plan v4, B4)",
-    "notes": "Canonical configuration. Policy is DERIVED from group: fixed->always-on, none->ignored, scheduled->from group window, client_68->orphan. slot = group open time for scheduled groups."
+    "notes": "Canonical configuration. Policy is DERIVED from group: fixed->always-on, none->ignored, scheduled->from group window. slot = group open time for scheduled groups. client_68 removed 2026-08-30."
   },
   "schedule": [
     { "time": "04:00", "group": "gr1" },
@@ -42,7 +42,6 @@
     { "client": "client_34", "name": "CHUOI", "group": "gr4", "slot": "19:45" },
     { "client": "client_35", "name": "CAM",   "group": "gr4", "slot": "19:45" },
 
-    { "client": "client_51", "name": "Emm.Miuu",        "group": "none", "slot": null },
-    { "client": "client_68", "name": "Ghost Story PC 0", "group": "none", "slot": null }
+    { "client": "client_51", "name": "Emm.Miuu",        "group": "none", "slot": null }
   ]
 }
