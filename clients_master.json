@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "schemaVersion": "1.0",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "source": "Derived from runtime_registry.json + lich trinh tat mo.xlsx (AUTORELOG plan v4, B4)",
+    "notes": "Canonical configuration. Policy is DERIVED from group: fixed->always-on, none->ignored, scheduled->from group window, client_68->orphan. slot = group open time for scheduled groups."
+  },
+  "schedule": [
+    { "time": "04:00", "group": "gr1" },
+    { "time": "08:00", "group": "gr2" },
+    { "time": "12:30", "group": "gr3" },
+    { "time": "19:45", "group": "gr4" }
+  ],
+  "clients": [
+    { "client": "client_14", "name": "XuyenChiXaoToi", "group": "fixed",  "slot": null },
+    { "client": "client_15", "name": "Bong",            "group": "fixed",  "slot": null },
+    { "client": "client_3",  "name": "ComChanNuocMat",  "group": "fixed",  "slot": null },
+    { "client": "client_1",  "name": "BoGiaDuaNon",     "group": "fixed",  "slot": null },
+    { "client": "client_13", "name": "CayBangNon",      "group": "fixed",  "slot": null },
+
+    { "client": "client_41", "name": "HANMI",       "group": "gr1", "slot": "04:00" },
+    { "client": "client_42", "name": "Ahihi10",     "group": "gr1", "slot": "04:00" },
+    { "client": "client_43", "name": "Ahihi6",      "group": "gr1", "slot": "04:00" },
+    { "client": "client_44", "name": "Ahihi8",      "group": "gr1", "slot": "04:00" },
+    { "client": "client_45", "name": "Ahihi9",      "group": "gr1", "slot": "04:00" },
+
+    { "client": "client_46", "name": "MachNhi",     "group": "gr2", "slot": "08:00" },
+    { "client": "client_47", "name": "DoanVanThu",  "group": "gr2", "slot": "08:00" },
+    { "client": "client_48", "name": "LieuAnh",     "group": "gr2", "slot": "08:00" },
+    { "client": "client_49", "name": "BinhDuc",     "group": "gr2", "slot": "08:00" },
+    { "client": "client_50", "name": "DieuLinh",    "group": "gr2", "slot": "08:00" },
+
+    { "client": "client_8",  "name": "khoqua10", "group": "gr3", "slot": "12:30" },
+    { "client": "client_6",  "name": "Me",       "group": "gr3", "slot": "12:30" },
+    { "client": "client_5",  "name": "khoqua07", "group": "gr3", "slot": "12:30" },
+    { "client": "client_2",  "name": "khoqua08", "group": "gr3", "slot": "12:30" },
+    { "client": "client_7",  "name": "khoqua09", "group": "gr3", "slot": "12:30" },
+
+    { "client": "client_31", "name": "NA",    "group": "gr4", "slot": "19:45" },
+    { "client": "client_32", "name": "COC",   "group": "gr4", "slot": "19:45" },
+    { "client": "client_33", "name": "XOAI",  "group": "gr4", "slot": "19:45" },
+    { "client": "client_34", "name": "CHUOI", "group": "gr4", "slot": "19:45" },
+    { "client": "client_35", "name": "CAM",   "group": "gr4", "slot": "19:45" },
+
+    { "client": "client_51", "name": "Emm.Miuu",        "group": "none", "slot": null },
+    { "client": "client_68", "name": "Ghost Story PC 0", "group": "none", "slot": null }
+  ]
+}
