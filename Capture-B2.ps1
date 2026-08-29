@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'AUTORELOG.Ws.psm1') -Force
 
-if (-not (Test-Path (Join-Path $PSScriptRoot 'config.json'))) { Write-Error "Thiếu config.json. Copy config.json.sample, điền token."; exit 2 }
+if (-not (Test-Path (Join-Path $PSScriptRoot 'config.json'))) { Write-Error "Missing config.json. Copy config.json.sample, fill token."; exit 2 }
 
 $cfg = Get-AutorelogConfig $ConfigPath
 $ws  = [System.Net.WebSockets.ClientWebSocket]::new()
@@ -28,24 +28,22 @@ function Recv($ms) {
   return [System.Text.Encoding]::UTF8.GetString($buf, 0, $res.Count)
 }
 
-# chờ scr_list_res đầu tiên
 $snap = $null
 for ($i = 0; $i -lt 60; $i++) {
   $m = Recv 2000
   if ($m -and $m -match '"scr_list_res"') { $snap = $m; break }
 }
-if (-not $snap) { Write-Error 'Không nhận được scr_list_res. Kiểm tra wsUrl/auth trong config.json.'; exit 1 }
+if (-not $snap) { Write-Error 'No scr_list_res received. Check wsUrl/auth in config.json.'; exit 1 }
 
 $insts = Get-ScrInstances $snap
 $target = if ($ClientId) { $insts | Where-Object { $_.clientId -eq $ClientId } | Select-Object -First 1 }
           elseif ($Idx -ge 0) { $insts | Where-Object { [int]$_.idx -eq $Idx } | Select-Object -First 1 }
           else { $insts | Select-Object -First 1 }
-if (-not $target) { Write-Error 'Không tìm thấy client mục tiêu.'; exit 1 }
+if (-not $target) { Write-Error 'Target client not found.'; exit 1 }
 
 $stateBefore = $target.state
 $idx = [int]$target.idx
 
-# suy key: ưu tiên field key có sẵn, kế đến -Key, kế đến giả thuyết root/<sess>#idx
 $key = if ($target.key) { $target.key }
        elseif ($Key) { $Key }
        else {
@@ -84,7 +82,7 @@ $result = [ordered]@{
   actResult    = $ack
   stateAfter   = $stateAfter
   correlation  = if ($correlated) { 'PASS' } else { 'UNCONFIRMED' }
-  note         = 'row_toggle đổi state qua runtime snapshot. Nếu stateAfter null -> chỉ có ACK, chưa transition (ACK_ONLY).'
+  note         = 'row_toggle changed state via runtime snapshot. If stateAfter is null, only ACK received, not yet transitioned (ACK_ONLY).'
 }
 $result | ConvertTo-Json -Depth 6 | Set-Content -Path $OutPath -Encoding UTF8
 Write-Host "`nact_result: $(if($ack){$ack.ok}else{'none'})  stateBefore=$stateBefore -> stateAfter=$stateAfter"
