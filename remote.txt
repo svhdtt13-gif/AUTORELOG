@@ -1,3 +1,5 @@
 https://remote.360auto.net/
-tk: svhdtt1.3@gmail.com
-pass: Danh2000@
+# CREDENTIAL REMOVED 2026-08-30.
+# This file previously contained a plaintext tk/pass for remote.360auto.net.
+# ACTION REQUIRED: rotate/reset that remote.360auto.net password now (treat as compromised).
+# Store secrets only in config.json (gitignored). Never commit tk/pass/token/session.
