@@ -1,0 +1,118 @@
+﻿{
+    "t":  "catalog",
+    "b":  {
+              "products":  [
+                               {
+                                   "id":  101,
+                                   "connected":  false,
+                                   "name":  "Auto Võ Lâm Chân Mệnh Origin",
+                                   "slug":  "auto-vo-lam-chan-menh-origin",
+                                   "status":  "NOT_INSTALLED",
+                                   "installed":  false,
+                                   "running":  false
+                               },
+                               {
+                                   "id":  99,
+                                   "connected":  false,
+                                   "name":  "Auto Võ Lâm Truyền Kỳ 2.0",
+                                   "slug":  "auto-vo-lam-truyen-ky-2-0",
+                                   "status":  "NOT_INSTALLED",
+                                   "installed":  false,
+                                   "running":  false
+                               },
+                               {
+                                   "id":  97,
+                                   "connected":  false,
+                                   "name":  "Auto Võ Hiệp Truyền Kỳ 2",
+                                   "slug":  "auto-vo-hiep-truyen-ky-2",
+                                   "status":  "NOT_INSTALLED",
+                                   "installed":  false,
+                                   "running":  false
+                               },
+                               {
+                                   "id":  83,
+                                   "connected":  false,
+                                   "name":  "Auto MU Lục Địa VNG",
+                                   "slug":  "auto-mu-luc-dia-vng",
+                                   "status":  "NOT_INSTALLED",
+                                   "installed":  false,
+                                   "running":  false
+                               },
+                               {
+                                   "id":  79,
+                                   "connected":  false,
+                                   "name":  "Auto Thiên Long Bát Bộ VNG",
+                                   "slug":  "auto-thien-long-bat-bo-vng",
+                                   "status":  "NOT_INSTALLED",
+                                   "installed":  false,
+                                   "running":  false
+                               },
+                               {
+                                   "id":  73,
+                                   "connected":  false,
+                                   "name":  "Auto Ghost Story: Thiện Nữ",
+                                   "slug":  "auto-ghost-story-thien-nu",
+                                   "status":  "RUNNING",
+                                   "installed":  true,
+                                   "running":  true
+                               },
+                               {
+                                   "id":  71,
+                                   "connected":  false,
+                                   "name":  "Auto Silkroad Origin Mobile",
+                                   "slug":  "auto-silkroad-origin-mobile",
+                                   "status":  "NOT_INSTALLED",
+                                   "installed":  false,
+                                   "running":  false
+                               },
+                               {
+                                   "id":  65,
+                                   "connected":  false,
+                                   "name":  "Auto Kiếm Hiệp Tình 2",
+                                   "slug":  "auto-kiem-hiep-tinh-2",
+                                   "status":  "NOT_INSTALLED",
+                                   "installed":  false,
+                                   "running":  false
+                               },
+                               {
+                                   "id":  25,
+                                   "connected":  false,
+                                   "name":  "Auto Võ Lâm Truyền Kỳ Mobile",
+                                   "slug":  "auto-vo-lam-truyen-ky-mobile",
+                                   "status":  "NOT_INSTALLED",
+                                   "installed":  false,
+                                   "running":  false
+                               },
+                               {
+                                   "id":  55,
+                                   "connected":  false,
+                                   "name":  "Auto Kiếm Thế Origin VNG",
+                                   "slug":  "auto-kiem-the-origin-vng",
+                                   "status":  "NOT_INSTALLED",
+                                   "installed":  false,
+                                   "running":  false
+                               },
+                               {
+                                   "id":  51,
+                                   "connected":  false,
+                                   "name":  "Auto Thiên Long Bát Bộ 2 VNG",
+                                   "slug":  "auto-thien-long-bat-bo-2-vng",
+                                   "status":  "NOT_INSTALLED",
+                                   "installed":  false,
+                                   "running":  false
+                               },
+                               {
+                                   "id":  26,
+                                   "connected":  false,
+                                   "name":  "Auto Võ Lâm Truyền Kỳ 1 Mobile",
+                                   "slug":  "auto-vo-lam-truyen-ky-1-mobile",
+                                   "status":  "NOT_INSTALLED",
+                                   "installed":  false,
+                                   "running":  false
+                               }
+                           ],
+              "gen":  24,
+              "machine":  "DESKTOP-DKDCA09",
+              "version":  2101
+          }
+}
