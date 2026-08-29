@@ -1,0 +1,7 @@
+{
+  "telegram": {
+    "token": "PASTE_BOT_TOKEN_HERE",
+    "chatId": "PASTE_CHAT_ID_HERE"
+  },
+  "enabled": ["toast", "telegram"]
+}
