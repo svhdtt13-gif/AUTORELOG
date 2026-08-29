@@ -3,6 +3,7 @@ ngrok.txt
 config.json
 remote.txt
 notify.json
+overrides.json
 *.exe
 
 # Runtime logs & cache
