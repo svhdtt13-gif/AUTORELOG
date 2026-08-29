@@ -55,3 +55,33 @@ Báo cáo Phase 0 từ HAR rất trung thực và đúng phương pháp. Quan tr
 Phase 0 HAR discovery: PASS và sẵn sàng làm nền tảng cho Phase 1 (Agent observation/read-only). Các gate PC test (B1 stable ID, B2 import, B4 conflict, heartbeat đo) VẪN PENDING và là điều kiện tiên quyết trước khi bật control path. Báo cáo tuân thủ đúng nguyên tắc không đoán vượt evidence — rất tốt.
 
 Gợi ý cập nhật plan §17: chuyển từ "chờ approval Phase 0" → "Phase 0 HAR discovery COMPLETED; PC validation PENDING (gate trước Phase 1)".
+
+
+---
+
+# PHẢN HỒI — PLAN (phương hướng xử lý tiếp theo)
+
+Review date: 2026-08-29 | plan SHA: 1238c1f5e6fd674d93f7da20254ab394ff59ba16
+
+## Đánh giá chung
+Plan được tái cấu trúc rất gọn và đúng hướng: chuyển từ "kế hoạch lớn" sang "phương hướng ưu tiên sau Phase 0 HAR" — B1→B2→B3 trước, rồi Agent v1 read-only, rồi control, migration cuối. Khớp nguyên tắc non-breaking và các feedback trước.
+
+## Điểm tốt
+1. §3 B2 ghi rõ "Không coi act_result.ok là bằng chứng thành công nếu runtime chưa transition" — tiếp thu trực tiếp feedback Phase 0. ✓
+2. §3 B3: chỉ thêm trường vào model sau khi semantics chứng minh. ✓
+3. Mô hình 3 lớp Master/Runtime/Control (§4) — tách biệt cấu hình/trạng thái/ý định rõ ràng. Rất tốt.
+4. §5 Agent v1 dùng API tối thiểu get_clients/get_state/start/stop — đơn giản, dễ hiện thực.
+5. §7 thứ tự: Agent v1 → Read-only Dashboard → Single-control → Group → Bulk → Migration. Đúng non-breaking.
+6. §8 gate rõ ràng; §9 status trung thực (HAR COMPLETED, PC PENDING).
+
+## Điểm cần bổ sung / làm rõ
+1. **B1 — hành động từng lớp identity.** Đã phân loại STABLE/REGENERATED/CONDITIONAL/UNKNOWN nhưng thiếu hành động cụ thể. Đề xuất: REGENERATED → remap mỗi discovery dùng name+machine+room làm fallback key; CONDITIONAL → cần xác nhận thủ công trước control; UNKNOWN → coi như orphan/hard-block. Và định nghĩa rõ trường nào làm DB key khi client_id không stable.
+2. **B2 — toggle vs absolute.** Plan nói "row_toggle / action thực tế" nhưng chưa khẳng định row_toggle là toggle hay absolute. Đề xuất ghi rõ giả thuyết B2 phải xác minh: nếu là toggle thì agent phát row_toggle rồi đọc state, chưa đạt desired thì phát lại (idempotent). B2 phải kết luận bản chất trước khi code control.
+3. **B3 — `key` gần chắc chắn chứa idx.** Từ phase0: client_14 idx=0 và key `root/1000#0` → hậu tố `#0` = idx. Đề xuất ghi luôn giả thuyết và quy tắc: map key→client_id qua snapshot, KHÔNG hardcode key.
+4. **B4 validator — wraparound.** Đã có "lịch qua ngày" nhưng nên tường minh: end < start BẮT BUỘC có endDayOffset, nếu không → invalid. (Quyết định từ v3, cần giữ rõ trong validator.)
+5. **🔒 Auth cho control API (tái nhắc).** §5 Agent v1 sẽ expose start/stop. Khi tái expose qua ngrok/public, PHẢI có auth (shared-secret/token). Bản plan mới bỏ điểm này của v4 — đề xuất thêm: control endpoint yêu cầu auth trước khi public.
+6. **Thiếu: Agent kết nối tới Remote WebSocket.** B2/B3 capture từ HAR trên Remote, nhưng Agent cần tự kết nối WebSocket Remote. Cần định nghĩa Agent lấy session/token từ config local (tái dùng config.json đã có, không expose, không log). Gap kết nối này chưa được nói tới.
+7. **Migration — nên có bước dual-run/canary.** §7 để "Migration khỏi AutoCycle" cuối là đúng, nhưng nên ghi rõ: Agent chạy read-only song song AutoCycle; sau đó bật control cho 1 group làm canary; chỉ khi khớp state mới tắt AutoCycle. Tránh cut-over đột ngột.
+
+## Kết luận
+Plan theo hướng xử lý tiếp theo rất tốt và sẵn sàng làm việc. Bổ sung: (1) hành động từng lớp B1, (2) clarify toggle-vs-absolute B2, (3) giả thuyết key=idx B3, (4) validator wraparound B4, (5) auth control API, (6) Agent connect Remote, (7) dual-run/canary migration. Sau đó có thể bắt đầu B1 trên PC thật.
