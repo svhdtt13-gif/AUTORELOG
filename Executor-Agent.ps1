@@ -4,8 +4,20 @@ param(
   [switch]$Apply
 )
 $ErrorActionPreference = 'Stop'
-$LogPath = Join-Path $PSScriptRoot 'executor.log'
+$LogPath   = Join-Path $PSScriptRoot 'executor.log'
+$AlertPath = Join-Path $PSScriptRoot 'alerts.log'
+$StatePath = Join-Path $PSScriptRoot 'lastrun.json'
+
 function Log($m){ Add-Content -Path $LogPath -Encoding UTF8 -Value (('{0:yyyy-MM-dd HH:mm:ss} {1}' -f (Get-Date), $m)) }
+function Alert($m){
+  $line = ('{0:yyyy-MM-dd HH:mm:ss} ALERT {1}' -f (Get-Date), $m)
+  Add-Content -Path $AlertPath -Encoding UTF8 -Value $line
+  Write-Host ('  [ALERT] ' + $m)
+  # Non-blocking Windows toast
+  try {
+    Start-Process -WindowStyle Hidden powershell -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'Show-Alert.ps1'),'-Message',$m)
+  } catch { Add-Content -Path $AlertPath -Encoding UTF8 -Value (('{0:yyyy-MM-dd HH:mm:ss} ALERT toast-fail {1}' -f (Get-Date), $_)) }
+}
 Import-Module (Join-Path $PSScriptRoot 'AUTORELOG.Core.psm1') -Force
 
 $master = Get-Content $MasterPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -44,15 +56,25 @@ function Start-Instance($info) {
   Start-Process -FilePath $info.exe -ArgumentList $args -WorkingDirectory $info.wd -WindowStyle Minimized
 }
 
-function Stop-Instance($pid) {
-  Stop-Process -Id $pid -Force
+function Stop-Instance($runPid) {
+  Stop-Process -Id $runPid -Force
+}
+
+# Previous run state (for crash detection)
+$prev = @{}
+if (Test-Path $StatePath) {
+  try {
+    $s = Get-Content $StatePath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($s.running) { foreach ($k in $s.running.PSObject.Properties) { $prev[$k.Name] = $k.Value } }
+  } catch { $prev = @{} }
 }
 
 $windows = Get-ScheduleWindows $master
 $now = Get-NowInTz
 Write-Host ("Now (Asia/Ho_Chi_Minh): {0:HH:mm}  Apply={1}" -f $now, $Apply)
 Log ("RUN Apply=$Apply Now={0:HH:mm} TZ=Asia/Ho_Chi_Minh" -f $now)
-$cStart = 0; $cStop = 0; $cNone = 0; $cSkip = 0
+$cStart = 0; $cStop = 0; $cNone = 0; $cSkip = 0; $cCrash = 0; $cFail = 0
+$newRunning = @{}
 
 $actions = @()
 foreach ($c in @($master.clients)) {
@@ -60,26 +82,49 @@ foreach ($c in @($master.clients)) {
   $desired = Get-DesiredState $c $windows $now
   $runningPid = Test-InstanceRunning $cid
   $running = ($null -ne $runningPid)
-  $act = 'NONE'
+  $act = 'NONE'; $event = 'OK'
   switch ($desired) {
     'running' { if (-not $running) { $act = 'START' } }
     'stopped' { if ($running) { $act = 'STOP' } }
     'blocked' { if ($running) { $act = 'STOP' } }
     default   { $act = 'NONE' }
   }
-  if ($act -eq 'START' -and -not $launch.ContainsKey($cid)) {
-    Write-Host ("  [WARN] $cid desired=running but no launch cmd in scene -> SKIP")
-    Log ("WARN $cid desired=running but no launch cmd in scene -> SKIP")
-    $act = 'SKIP'
+  if ($act -eq 'START') {
+    if (-not $launch.ContainsKey($cid)) {
+      Write-Host ("  [WARN] $cid desired=running but no launch cmd in scene -> SKIP")
+      Log ("WARN $cid desired=running but no launch cmd in scene -> SKIP")
+      $act = 'SKIP'
+    } elseif ($prev.ContainsKey($cid) -and $prev[$cid] -eq $true) {
+      $event = 'CRASH'   # was running last cycle, now gone -> unexpected off
+    } else {
+      $event = 'SCHED_START'
+    }
+  } elseif ($act -eq 'STOP') {
+    $event = if ($desired -eq 'blocked') { 'ORPHAN_STOP' } else { 'SCHED_STOP' }
   }
-  $actions += [pscustomobject]@{ client = $cid; name = [string]$c.name; desired = $desired; running = $running; action = $act }
-  Write-Host ('  {0,-10} {1,-12} desired={2,-8} running={3,-5} -> {4}' -f $cid, $c.name, $desired, $running, $act)
-  switch ($act) { 'START' { $cStart++ } 'STOP' { $cStop++ } 'NONE' { $cNone++ } 'SKIP' { $cSkip++ } }
+
+  if ($act -eq 'START' -and -not $launch.ContainsKey($cid)) { $cSkip++ }
+  else {
+    switch ($act) { 'START' { $cStart++ } 'STOP' { $cStop++ } 'NONE' { $cNone++ } }
+  }
+
   if ($Apply) {
-    if ($act -eq 'START') { try { Start-Instance $launch[$cid]; Write-Host "    STARTED $cid"; Log "STARTED $cid" } catch { Write-Host "    START FAIL $cid : $_"; Log "START FAIL $cid : $_" } }
+    if ($act -eq 'START') {
+      try { Start-Instance $launch[$cid]; Write-Host "    STARTED $cid"; Log "STARTED $cid"; if ($event -eq 'CRASH') { $cCrash++; Alert ("Client $cid ($($c.name)) tat ngoai y muon - da tu dong bat lai") } }
+      catch { Write-Host "    START FAIL $cid : $_"; Log "START FAIL $cid : $_"; $cFail++; Alert ("Client $cid ($($c.name)) KHONG the bat lai: $_") }
+    }
     elseif ($act -eq 'STOP') { try { Stop-Instance $runningPid; Write-Host "    STOPPED $cid (pid $runningPid)"; Log "STOPPED $cid pid=$runningPid" } catch { Write-Host "    STOP FAIL $cid : $_"; Log "STOP FAIL $cid : $_" } }
+  } else {
+    if ($event -eq 'CRASH') { Alert ("[DRYRUN] Client $cid ($($c.name)) dang tat ngoai y muon (se bat lai khi -Apply)") }
   }
+
+  # expected next-running state
+  $next = if ($act -eq 'START') { $true } elseif ($act -eq 'STOP') { $false } else { $running }
+  $newRunning[$cid] = $next
 }
 
-Log ("SUMMARY start=$cStart stop=$cStop none=$cNone skip=$cSkip Apply=$Apply")
+# Persist state
+[ordered]@{ ts = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'); running = $newRunning } | ConvertTo-Json -Compress | Set-Content $StatePath -Encoding UTF8
+
+Log ("SUMMARY start=$cStart stop=$cStop none=$cNone skip=$cSkip crash=$cCrash fail=$cFail Apply=$Apply")
 if (-not $Apply) { Write-Host "`nDRY-RUN: nothing changed. Re-run with -Apply to actually start/stop instances." }
