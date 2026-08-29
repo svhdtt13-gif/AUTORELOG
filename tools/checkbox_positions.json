@@ -1,0 +1,93 @@
+[
+  {
+    "name": "thanh duong chien",
+    "x": 13,
+    "y": 5,
+    "panelX": 947,
+    "panelY": 393
+  },
+  {
+    "name": "rong thieng",
+    "x": 13,
+    "y": 30,
+    "panelX": 947,
+    "panelY": 418
+  },
+  {
+    "name": "phuc loi bang",
+    "x": 13,
+    "y": 52,
+    "panelX": 947,
+    "panelY": 440
+  },
+  {
+    "name": "khieu chien mon phai",
+    "x": 13,
+    "y": 74,
+    "panelX": 947,
+    "panelY": 462
+  },
+  {
+    "name": "on lai",
+    "x": 13,
+    "y": 96,
+    "panelX": 947,
+    "panelY": 484
+  },
+  {
+    "name": "nv su mon",
+    "x": 13,
+    "y": 118,
+    "panelX": 947,
+    "panelY": 506
+  },
+  {
+    "name": "chien long duong",
+    "x": 13,
+    "y": 140,
+    "panelX": 947,
+    "panelY": 528
+  },
+  {
+    "name": "nhiem vu bao do",
+    "x": 13,
+    "y": 162,
+    "panelX": 947,
+    "panelY": 550
+  },
+  {
+    "name": "bao thuong",
+    "x": 13,
+    "y": 184,
+    "panelX": 947,
+    "panelY": 572
+  },
+  {
+    "name": "thai vi",
+    "x": 13,
+    "y": 206,
+    "panelX": 947,
+    "panelY": 594
+  },
+  {
+    "name": "sao may man",
+    "x": 13,
+    "y": 228,
+    "panelX": 947,
+    "panelY": 616
+  },
+  {
+    "name": "thu tai no",
+    "x": 13,
+    "y": 250,
+    "panelX": 947,
+    "panelY": 638
+  },
+  {
+    "name": "trom bang",
+    "x": 13,
+    "y": 272,
+    "panelX": 947,
+    "panelY": 660
+  }
+]
