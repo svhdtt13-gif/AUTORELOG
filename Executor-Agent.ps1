@@ -13,12 +13,10 @@ function Alert($m){
   $line = ('{0:yyyy-MM-dd HH:mm:ss} ALERT {1}' -f (Get-Date), $m)
   Add-Content -Path $AlertPath -Encoding UTF8 -Value $line
   Write-Host ('  [ALERT] ' + $m)
-  # Non-blocking Windows toast
-  try {
-    Start-Process -WindowStyle Hidden powershell -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'Show-Alert.ps1'),'-Message',$m)
-  } catch { Add-Content -Path $AlertPath -Encoding UTF8 -Value (('{0:yyyy-MM-dd HH:mm:ss} ALERT toast-fail {1}' -f (Get-Date), $_)) }
+  try { Send-Notify -Message $m } catch { Add-Content -Path $AlertPath -Encoding UTF8 -Value (('{0:yyyy-MM-dd HH:mm:ss} ALERT notify-fail {1}' -f (Get-Date), $_)) }
 }
 Import-Module (Join-Path $PSScriptRoot 'AUTORELOG.Core.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'AUTORELOG.Notify.psm1') -Force
 
 $master = Get-Content $MasterPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $scene  = Get-Content $ScenePath -Raw -Encoding UTF8 | ConvertFrom-Json
