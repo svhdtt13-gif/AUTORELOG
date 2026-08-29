@@ -1,0 +1,42 @@
+﻿DISCOVERY / SYNC REPORT  -  08/29/2026 23:36:56
+master clients : 27
+runtime instances: 28
+
+SCHEDULE WINDOWS:
+  gr1: 04:00 -> 08:00  (240m)
+  gr2: 08:00 -> 12:30  (270m)
+  gr3: 12:30 -> 19:45  (435m)
+  gr4: 19:45 -> 04:00 (+1d)  (495m)
+
+CLIENT RECONCILIATION:
+  client_14    XuyenChiXaoToi   grp=fixed  pol=fixed     cls=known            rt=running  desired=running
+  client_15    Bong             grp=fixed  pol=fixed     cls=known            rt=offline  desired=running
+  client_3     ComChanNuocMat   grp=fixed  pol=fixed     cls=known            rt=running  desired=running
+  client_1     BoGiaDuaNon      grp=fixed  pol=fixed     cls=known            rt=offline  desired=running
+  client_13    CayBangNon       grp=fixed  pol=fixed     cls=known            rt=running  desired=running
+  client_8     khoqua10         grp=gr3    pol=scheduled cls=known            rt=offline  desired=stopped
+  client_6     Me               grp=gr3    pol=scheduled cls=known            rt=running  desired=stopped
+  client_5     khoqua07         grp=gr3    pol=scheduled cls=known            rt=offline  desired=stopped
+  client_2     khoqua08         grp=gr3    pol=scheduled cls=known            rt=running  desired=stopped
+  client_7     khoqua09         grp=gr3    pol=scheduled cls=known            rt=offline  desired=stopped
+  client_31    NA               grp=gr4    pol=scheduled cls=known            rt=running  desired=running
+  client_32    COC              grp=gr4    pol=scheduled cls=known            rt=offline  desired=running
+  client_33    XOAI             grp=gr4    pol=scheduled cls=known            rt=running  desired=running
+  client_34    CHUOI            grp=gr4    pol=scheduled cls=known            rt=offline  desired=running
+  client_35    CAM              grp=gr4    pol=scheduled cls=known            rt=running  desired=running
+  client_41    HANMI            grp=gr1    pol=scheduled cls=known            rt=offline  desired=stopped
+  client_42    Ahihi10          grp=gr1    pol=scheduled cls=known            rt=running  desired=stopped
+  client_43    Ahihi6           grp=gr1    pol=scheduled cls=known            rt=offline  desired=stopped
+  client_44    Ahihi8           grp=gr1    pol=scheduled cls=known            rt=running  desired=stopped
+  client_45    Ahihi9           grp=gr1    pol=scheduled cls=known            rt=offline  desired=stopped
+  client_46    MachNhi          grp=gr2    pol=scheduled cls=known            rt=running  desired=stopped
+  client_47    DoanVanThu       grp=gr2    pol=scheduled cls=known            rt=offline  desired=stopped
+  client_48    LieuAnh          grp=gr2    pol=scheduled cls=known            rt=running  desired=stopped
+  client_49    BinhDuc          grp=gr2    pol=scheduled cls=known            rt=offline  desired=stopped
+  client_50    DieuLinh         grp=gr2    pol=scheduled cls=known            rt=running  desired=stopped
+  client_51    Emm.Miuu         grp=none   pol=none      cls=known            rt=offline  desired=ignore
+  client_68    Ghost Story PC 0 grp=none   pol=orphan    cls=orphan           rt=offline  desired=blocked
+  client_99    TestUnknown      grp=       pol=unknown   cls=new/orphan       rt=running  desired=unknown
+
+SUMMARY: known=26, orphan=1, new/orphan=1
+
