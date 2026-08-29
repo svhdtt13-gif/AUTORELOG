@@ -1,0 +1,184 @@
+{
+    "clients":  [
+                    {
+                        "group":  "fixed",
+                        "name":  "XuyenChiXaoToi",
+                        "slot":  null,
+                        "client":  "client_14"
+                    },
+                    {
+                        "group":  "fixed",
+                        "name":  "Bong",
+                        "slot":  null,
+                        "client":  "client_15"
+                    },
+                    {
+                        "group":  "fixed",
+                        "name":  "ComChanNuocMat",
+                        "slot":  null,
+                        "client":  "client_3"
+                    },
+                    {
+                        "group":  "fixed",
+                        "name":  "BoGiaDuaNon",
+                        "slot":  null,
+                        "client":  "client_1"
+                    },
+                    {
+                        "group":  "fixed",
+                        "name":  "CayBangNon",
+                        "slot":  null,
+                        "client":  "client_13"
+                    },
+                    {
+                        "group":  "gr3",
+                        "name":  "khoqua10",
+                        "slot":  "12:30",
+                        "client":  "client_8"
+                    },
+                    {
+                        "group":  "gr3",
+                        "name":  "Me",
+                        "slot":  "12:30",
+                        "client":  "client_6"
+                    },
+                    {
+                        "group":  "gr3",
+                        "name":  "khoqua07",
+                        "slot":  "12:30",
+                        "client":  "client_5"
+                    },
+                    {
+                        "group":  "gr3",
+                        "name":  "khoqua08",
+                        "slot":  "12:30",
+                        "client":  "client_2"
+                    },
+                    {
+                        "group":  "gr3",
+                        "name":  "khoqua09",
+                        "slot":  "12:30",
+                        "client":  "client_7"
+                    },
+                    {
+                        "group":  "gr4",
+                        "name":  "NA",
+                        "slot":  "19:45",
+                        "client":  "client_31"
+                    },
+                    {
+                        "group":  "gr4",
+                        "name":  "COC",
+                        "slot":  "19:45",
+                        "client":  "client_32"
+                    },
+                    {
+                        "group":  "gr4",
+                        "name":  "XOAI",
+                        "slot":  "19:45",
+                        "client":  "client_33"
+                    },
+                    {
+                        "group":  "gr4",
+                        "name":  "CHUOI",
+                        "slot":  "19:45",
+                        "client":  "client_34"
+                    },
+                    {
+                        "group":  "gr4",
+                        "name":  "CAM",
+                        "slot":  "19:45",
+                        "client":  "client_35"
+                    },
+                    {
+                        "group":  "gr1",
+                        "name":  "HANMI",
+                        "slot":  "04:00",
+                        "client":  "client_41"
+                    },
+                    {
+                        "group":  "gr1",
+                        "name":  "Ahihi10",
+                        "slot":  "04:00",
+                        "client":  "client_42"
+                    },
+                    {
+                        "group":  "gr1",
+                        "name":  "Ahihi6",
+                        "slot":  "04:00",
+                        "client":  "client_43"
+                    },
+                    {
+                        "group":  "gr1",
+                        "name":  "Ahihi8",
+                        "slot":  "04:00",
+                        "client":  "client_44"
+                    },
+                    {
+                        "group":  "gr1",
+                        "name":  "Ahihi9",
+                        "slot":  "04:00",
+                        "client":  "client_45"
+                    },
+                    {
+                        "group":  "gr2",
+                        "name":  "MachNhi",
+                        "slot":  "08:00",
+                        "client":  "client_46"
+                    },
+                    {
+                        "group":  "gr2",
+                        "name":  "DoanVanThu",
+                        "slot":  "08:00",
+                        "client":  "client_47"
+                    },
+                    {
+                        "group":  "gr2",
+                        "name":  "LieuAnh",
+                        "slot":  "08:00",
+                        "client":  "client_48"
+                    },
+                    {
+                        "group":  "gr2",
+                        "name":  "BinhDuc",
+                        "slot":  "08:00",
+                        "client":  "client_49"
+                    },
+                    {
+                        "group":  "gr2",
+                        "name":  "DieuLinh",
+                        "slot":  "08:00",
+                        "client":  "client_50"
+                    },
+                    {
+                        "group":  "none",
+                        "name":  "Emm.Miuu",
+                        "slot":  null,
+                        "client":  "client_51"
+                    },
+                    {
+                        "group":  "none",
+                        "name":  "Ghost Story PC 0",
+                        "slot":  null,
+                        "client":  "client_68"
+                    }
+                ],
+    "schedule":  [
+                     {
+                         "time":  "04:00",
+                         "group":  "gr1"
+                     },
+                     {
+                         "time":  "08:00",
+                         "group":  "gr2"
+                     },
+                     {
+                         "time":  "12:30",
+                         "group":  "gr3"
+                     },
+                     {
+                         "time":  "19:45",
+                         "group":  "gr4"
+                     }
+                 ]
+}
