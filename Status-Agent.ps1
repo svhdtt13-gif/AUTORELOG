@@ -40,24 +40,27 @@ Write-Host 'Schedule windows:'
 foreach ($w in $windows) { Write-Host ('  {0,-5} {1} -> {2}' -f $w.group, $w.open, $w.close) }
 if ($overrides.Count -gt 0) { Write-Host ('Active overrides: {0}' -f ($overrides.Keys -join ', ')) }
 
-$total = 0; $running = 0; $drift = 0
+$total = 0; $running = 0; $connected = 0; $drift = 0
 Write-Host ''
-Write-Host ('{0,-10} {1,-16} {2,-6} {3,-8} {4,-8} {5,-10} {6}' -f 'CLIENT', 'NAME', 'GRP', 'DESIRED', 'RUNNING', 'OVERRIDE', 'DRIFT')
+Write-Host ('{0,-10} {1,-16} {2,-6} {3,-8} {4,-8} {5,-8} {6,-10} {7}' -f 'CLIENT', 'NAME', 'GRP', 'DESIRED', 'RUNNING', 'CONN', 'OVERRIDE', 'DRIFT')
 foreach ($c in @($master.clients)) {
   $cid = [string]$c.client
   $desired = Get-DesiredState $c $windows $now
   $ovStr = '-'
   if ($overrides.ContainsKey($cid) -and $now -lt $overrides[$cid].until) { $desired = $overrides[$cid].action; $ovStr = $overrides[$cid].action }
   $isRun = Test-InstanceRunning $cid
+  $isConn = if ($isRun) { Test-InstanceConnected $cid } else { $false }
   $total++
   if ($isRun) { $running++ }
+  if ($isConn) { $connected++ }
   if ($desired -eq 'running' -and -not $isRun) { $dr = 'YES(up)' }
   elseif (($desired -eq 'stopped' -or $desired -eq 'blocked') -and $isRun) { $dr = 'YES(down)' }
+  elseif ($desired -eq 'running' -and $isRun -and -not $isConn) { $dr = 'YES(zombie)' }
   else { $dr = '-' }
   if ($dr -ne '-') { $drift++ }
-  Write-Host ('{0,-10} {1,-16} {2,-6} {3,-8} {4,-8} {5,-10} {6}' -f $cid, [string]$c.name, [string]$c.group, $desired, $(if ($isRun) { 'yes' } else { 'no' }), $ovStr, $dr)
+  Write-Host ('{0,-10} {1,-16} {2,-6} {3,-8} {4,-8} {5,-8} {6,-10} {7}' -f $cid, [string]$c.name, [string]$c.group, $desired, $(if ($isRun) { 'yes' } else { 'no' }), $(if ($isConn) { 'yes' } else { 'no' }), $ovStr, $dr)
 }
 Write-Host ''
-Write-Host ('Total={0}  running={1}  drift={2}' -f $total, $running, $drift)
-if ($drift -gt 0) { Write-Host 'DRIFT detected -> executor auto-corrects within 1 min (or run Executor-Agent.ps1 -Apply).' }
+Write-Host ('Total={0}  running={1}  connected={2}  drift={3}' -f $total, $running, $connected, $drift)
+if ($drift -gt 0) { Write-Host 'DRIFT detected (incl. zombie = process song nhung chua ket noi game). Executor tu dong xu ly (ZOMBIE_RESTART co cooldown).' }
 else { Write-Host 'No drift: actual state matches schedule (incl. overrides).' }
