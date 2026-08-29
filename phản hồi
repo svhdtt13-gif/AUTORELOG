@@ -1,30 +1,24 @@
-# PHẢN HỒI KẾ HOẠCH v2 — AUTORELOG / AutoGhostStory Client Manager
+# PHẢN HỒI KẾ HOẠCH v3 — AUTORELOG / AutoGhostStory Client Manager
 
-Review date: 2026-08-29 | plan SHA: 4a582861fba8753151fad26306ef24c467d98741
+Review date: 2026-08-29 | plan SHA: 8112cfc6129df0ea98a94f4bfb097bf6b4e94ee4
 
-## 1. v2 ĐÃ KHẮC PHỤC CÁC ĐIỂM TỪ v1
-- Bổ sung Baseline rõ ràng: §1 "AUTORELOG hiện tại" liệt kê db.html / serve.ps1 / sync_master.ps1 / AutoCycle.ps1 / clients_master.json, và §18 master client data (27 client, nhóm, slot). ✓
-- Làm rõ identity ổn định (client_14...) và KHÔNG dùng rowIndex làm khóa (§7, §17, §18). ✓
-- Có quy trình xlsx → master (§13, §16). ✓
-- Scheduler có rule 9–12 chống duplicate và xử lý trạng thái chuyển tiếp. ✓
-- Có error dashboard / audit log (§5, §12, Phase 6). ✓
-- Tách desiredState và lịch (trường action), có conflict detection. Chấp nhận được.
+## 1. v3 ĐÃ LÀM RẤT TỐT
+- 9 quyết định từ v2 được cứng hóa thành §1 (bắt buộc). ✓
+- Phase 0 blocker rõ ràng B1–B5 + danh sách deliverables cụ thể. ✓
+- Data model: `groupId` đơn (không array) → triệt tiêu multi-group từ gốc; thêm `identityVerified`, `orphan`. ✓
+- Schedule có `endDayOffset` → giải quyết lịch qua đêm. ✓
+- §14 thứ tự code, §13 test plan, §15 acceptance, §17 quy trình review khớp đúng workflow. ✓
+- Rút gọn từ 16912 → 9248 ký tự, tập trung vào quyết định thay vì liệt kê dài. ✓
 
-## 2. ĐIỂM CẦN LƯU Ý / CHỈNH SỬA CHO v2
-1. Xử lý giờ qua đêm (wraparound): slot gr3 19:45–12:30, gr1 08:00–04:00... §18 đúng khi nhận diện "qua ngày", NHƯNG phải quy định rõ biểu diễn (vd end = start + duration có wrap, hoặc trường endDayOffset). Quan trọng: AutoCycle / sync_master hiện tại phải tính đúng, nếu không client bị bật/tắt sai. Đề xuất thêm bước validate: master schedule == lịch suy ra ở §18.
-2. Nhóm `fixed`: §18 ghi "chưa tự suy diễn giờ bật/tắt". Cần định nghĩa rõ chính sách: fixed = luôn chạy (không nằm trong Scheduler quay vòng) hay do người điều khiển thủ công? Nếu Scheduler bỏ qua fixed thì phải ghi rõ để không ai vô tình Stop chúng.
-3. Client `none`: client_68 "Ghost Story PC 0" trông như artifact tự động phát hiện (không phải tài khoản thật). Đề xuất gắn cờ `orphan/unknown`, không đưa vào master quản lý, chỉ hiển thị cảnh báo.
-4. Rủi ro #1 – mapping identity: kế hoạch GIẢ ĐỊNH `client_14` trong master khớp `client id` từ `scr_list`. Phải xác minh thực tế trên PC rằng ID này bền qua restart trước khi xây Client Registry. Nếu `scr_list` trả về ID khác (mã máy / thứ tự), toàn bộ mapping hỏng. Đây là blocker Phase 1.
-5. CSDL SQLite (§11) vs JSON hiện tại: AUTORELOG đang dùng clients_master.json + client_database.json làm truth. Thêm SQLite tạo gánh nặng migration. Đề xuất GIỮ JSON làm canonical (khớp nguyên tắc §17 "tái sử dụng cấu trúc hiện có"), chỉ thêm SQLite nếu cần đa PC. Tránh hai nguồn truth.
-6. API REST đầy đủ (§10) là mục tiêu Phase 3+. Hiện serve.ps1 chỉ có /api/master. Khi mở rộng phải GIỮ nguyên endpoint cũ để db.html không gãy. Đề xuất thêm endpoint tăng dần, không viết lại.
-7. Client có thể thuộc nhiều group (groupIds array). Nếu hai group có lịch Start/Stop giao nhau cho cùng 1 client → conflict. Cần quy tắc: 1 client chỉ thuộc 1 nhóm lịch, hoặc conflict detection từ chối lịch giao nhau.
-8. Reconnect / heartbeat: §6 nói reconnect, nhưng nên có cơ chế reconnect cơ bản ngay từ Agent v1 (không đợi Phase 6) vì mất kết nối là chuyện thường trên ngrok-free.
-9. Credential: §9 đúng khi không lưu mật khẩu game trên web. Cần nhấn mạnh Controller chỉ gọi intent, đọc kết quả từ Auto – tránh đưa credential vào bất kỳ log/audit.
+## 2. ĐIỂM CẦN LÀM RÕ TRƯỚC APPROVAL
+1. Cơ chế capture Start/Stop (B5) chưa định nghĩa CÁCH. Đề xuất: capture = quan sát transition của `scr_list` khi bấm menu thủ công (tái dùng `ClickStop*`/`ToggleRow*` hiện có làm trigger) + ghi lại before/after state và request/response. Thiếu cách capture cụ thể sẽ kẹt Phase 0.
+2. Chính sách `fixed` chưa dứt khoát: "chỉ manual hoặc explicit schedule" nhưng làm sao fixed được bật lần đầu? Đề xuất định nghĩa rõ: `fixed` = start-at-boot nếu offline, KHÔNG auto-stop, trừ khi có explicit schedule override. Cần constant để Scheduler v1 không lầm.
+3. `desiredState` trong model (§5) dễ conflict với lịch (§8 lấy lịch làm driver). Đề xuất: `desiredState` là trường TÍNH TOÁN (read-only) từ schedule mỗi tick, không phải do user set riêng, tránh drift.
+4. XLSX import (§11 / §4 B2): phải GHI VÀO `clients_master.json` (canonical), không tạo nguồn thứ 2. §2 đã nói JSON canonical — hãy nói rõ importer export vào master JSON.
+5. Transition không phá hệ đang chạy: hiện `AutoCycle` đang chạy trên `clients_master.json` với ID giả định. Cần ghi chú "giữ nguyên hệ hiện tại đến khi Phase 0 xong rồi mới switch", tránh downtime.
+6. Heartbeat: §6/§9 nói có nhưng thiếu constant (vd 10s heartbeat, 30s timeout). Đề xuất thêm thông số để Agent/Web nhất quán.
+7. HAR ở Phase 0 chứa cookie/session → phải SCRUB trước khi đụng repo. §12/§17 nói không commit HAR, nhưng cần nhấn: HAR capture chỉ lưu local, tẩy auth trước bất kỳ share/log nào.
+8. `client_68` orphan: thêm vào test plan (§13) một case xác nhận orphan KHÔNG bị schedule.
 
 ## 3. KẾT LUẬN
-v2 đã rất tốt và sẵn sàng làm khung. Các điểm then chốt trước khi sửa code:
-(1) xác minh stable client ID thực tế,
-(2) chuẩn hóa xlsx→master và validate lịch qua đêm,
-(3) định nghĩa rõ chính sách `fixed` và `none`,
-(4) giữ JSON làm truth thay vì vội thêm SQLite.
-Sau khi làm rõ 4 điểm này có thể bắt đầu Phase 1 (Discovery).
+v3 đã approval-ready. Chỉ cần bổ sung: (1) cách capture B5, (2) chính sách `fixed` rõ, (3) `desiredState` computed, (4) xlsx → master JSON, (5) non-breaking transition, (6) heartbeat constants. Sau đó có thể duyệt Phase 0 và bắt đầu Discovery.
