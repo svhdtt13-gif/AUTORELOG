@@ -1,0 +1,48 @@
+﻿{
+    "generatedAt":  "2026-08-29 23:38:33",
+    "note":  "PASS = du evidence; STRUCT = dung cau truc can live confirm; PENDING_PC_TEST = phai chay tren PC that.",
+    "gates":  [
+                  {
+                      "id":  "B4",
+                      "description":  "XLSX/master validation cau truc va wraparound",
+                      "status":  "PASS",
+                      "evidence":  "Master hop le, khong loi."
+                  },
+                  {
+                      "id":  "B6",
+                      "description":  "client_68 orphan classification",
+                      "status":  "STRUCT_PASS_LIVE_PENDING",
+                      "evidence":  "Master gan client_68=none hard-block. Can live reconcile voi scr_list de xac nhan orphan."
+                  },
+                  {
+                      "id":  "B1",
+                      "description":  "Stable client_id qua restart",
+                      "status":  "PENDING_PC_TEST",
+                      "evidence":  "Snapshot co 28 instances, client_id chuan hoa on (bo prefix transport). Can restart Auto/PC de xac nhan ben vung."
+                  },
+                  {
+                      "id":  "B3",
+                      "description":  "key epoch semantics",
+                      "status":  "PENDING_PC_TEST",
+                      "evidence":  "Can capture key/epoch tu Remote de giai ma."
+                  },
+                  {
+                      "id":  "B5",
+                      "description":  "Group conflict 1 client 1 group",
+                      "status":  "PASS_STRUCT",
+                      "evidence":  "Master hien tai moi client thuoc 1 group duy nhat (single-value group field)."
+                  },
+                  {
+                      "id":  "B2",
+                      "description":  "row_toggle va Start Stop correlation",
+                      "status":  "PENDING_PC_TEST",
+                      "evidence":  "Can capture 1 client: OFFLINE row_toggle RUNNING va nguoc lai, xac nhan qua delta scr_list_res."
+                  },
+                  {
+                      "id":  "B7",
+                      "description":  "Heartbeat reconnect do thuc te",
+                      "status":  "PENDING_PC_TEST",
+                      "evidence":  "Baseline 10s 30s la design; can do tren PC."
+                  }
+              ]
+}
