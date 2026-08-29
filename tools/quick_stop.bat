@@ -1,0 +1,1 @@
+@echo off\r\nREM T?t to?n b? chu k? (kill daemon + qnyh)\r\nschtasks /End /TN "AutoGhostStory Cycle" 2>nul\r\n@(Get-CimInstance Win32_Process | Where-Object {$_.Name -eq "powershell.exe" -and $_.CommandLine -match "AutoCycle" -and $_.CommandLine -notmatch "NonInteractive"} | ForEach-Object { Stop-Process -Id $_.ProcessId -Force })\r\necho [OK] Daemon + AutoCycle d?ng
