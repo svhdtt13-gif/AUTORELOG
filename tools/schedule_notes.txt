@@ -1,0 +1,15 @@
+﻿=== NHÓM SLOT - THỜI GIAN CHẠY (DẬT CHO CÔNG CÁC) ===
+Nhóm 1 - 19h45 đến 4h sáng: NA / COC / XOAI / CHUOI / CAM (client_31-35) (mở 19:45, đóng 12:30)
+Nhóm 2 - 4h đến 8h sáng: HANMI / Ahihi10 / Ahihi6 / Ahihi8 / Ahihi9 (client_41-45) (mở 04:00, đóng 19:45)
+Nhóm 3 - 8h đến 12h30 sáng: MachNhi / DoanVanThu / LieuAnh / BinhDuc / DieuLinh (client_46-50) (mở 08:00, đóng 08:00? hoặc 12:30 theo chu kỳ? Nhóm này chạy từ 8h-12h30)
+Nhóm 4 - 12h30 đến 19h45: khoqua08 / khoqua07 / Me / khoqua09 / khoqua10 (client_2,5,6,7,8) (mở 12:30, đóng 19:45)
+
+5 FIXED (luôn mở mọi thời gian):
+client_1 (BoGiaDuaNon), client_3 (ComChanNuocMat), client_13 (CayBangNon), client_14 (XuyenChiXaoToi), client_15 (Bong)
+
+CHU KỲ THỰC TẾ (liên tục):
+- Trước 4h: nhóm 19:45 (31-35) [wrap từ 19:45]
+- Trước 8h: nhóm 04:00 (41-45)
+- Trước 12h30: nhóm 08:00 (46-50)
+- Trước 19:45: nhóm 12:30 (2,5,6,7,8)
+- Sau 19:45: nhóm 19:45 (31-35)
