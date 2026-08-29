@@ -1,0 +1,14 @@
+# Secrets / credentials (NEVER commit)
+ngrok.txt
+config.json
+*.exe
+
+# Runtime logs & cache
+cache/
+*.log
+
+# Large binaries (>100MB)
+*.zip
+*.rar
+*.iso
+*.mp4
