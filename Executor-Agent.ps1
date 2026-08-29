@@ -69,6 +69,21 @@ if (Test-Path $StatePath) {
 
 $windows = Get-ScheduleWindows $master
 $now = Get-NowInTz
+
+# Manual overrides (temporary schedule override, written by Control-Client.ps1)
+$overrides = @{}
+$OverridePath = Join-Path $PSScriptRoot 'overrides.json'
+if (Test-Path $OverridePath) {
+  try {
+    $oj = Get-Content $OverridePath -Raw -Encoding UTF8 | ConvertFrom-Json
+    foreach ($k in $oj.PSObject.Properties) {
+      $ov = $k.Value
+      $until = $null
+      if ($ov.until -and [datetime]::TryParse([string]$ov.until, [ref]$until)) { $overrides[$k.Name] = @{ action = [string]$ov.action; until = $until } }
+    }
+  } catch { $overrides = @{} }
+}
+
 Write-Host ("Now (Asia/Ho_Chi_Minh): {0:HH:mm}  Apply={1}" -f $now, $Apply)
 Log ("RUN Apply=$Apply Now={0:HH:mm} TZ=Asia/Ho_Chi_Minh" -f $now)
 $cStart = 0; $cStop = 0; $cNone = 0; $cSkip = 0; $cCrash = 0; $cFail = 0
@@ -78,6 +93,7 @@ $actions = @()
 foreach ($c in @($master.clients)) {
   $cid = [string]$c.client
   $desired = Get-DesiredState $c $windows $now
+  if ($overrides.ContainsKey($cid) -and $now -lt $overrides[$cid].until) { $desired = $overrides[$cid].action }
   $runningPid = Test-InstanceRunning $cid
   $running = ($null -ne $runningPid)
   $act = 'NONE'; $event = 'OK'
