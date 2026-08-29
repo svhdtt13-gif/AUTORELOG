@@ -1,0 +1,32 @@
+{
+  "instances": [
+    { "id": "0:client_14", "idx": 0, "name": "XuyenChiXaoToi", "state": "running", "cap": "ok", "capAge": 12 },
+    { "id": "0:client_15", "idx": 1, "name": "Bong", "state": "offline", "cap": "wait", "capAge": 3 },
+    { "id": "0:client_3",  "idx": 2, "name": "ComChanNuocMat", "state": "running", "cap": "ok", "capAge": 40 },
+    { "id": "0:client_1",  "idx": 3, "name": "BoGiaDuaNon", "state": "offline", "cap": "busy", "capAge": 5 },
+    { "id": "0:client_13", "idx": 4, "name": "CayBangNon", "state": "running", "cap": "ok", "capAge": 8 },
+    { "id": "0:client_8",  "idx": 5, "name": "khoqua10", "state": "offline", "cap": "wait", "capAge": 1 },
+    { "id": "0:client_6",  "idx": 6, "name": "Me", "state": "running", "cap": "ok", "capAge": 22 },
+    { "id": "0:client_5",  "idx": 7, "name": "khoqua07", "state": "offline", "cap": "wait", "capAge": 2 },
+    { "id": "0:client_2",  "idx": 8, "name": "khoqua08", "state": "running", "cap": "ok", "capAge": 15 },
+    { "id": "0:client_7",  "idx": 9, "name": "khoqua09", "state": "offline", "cap": "wait", "capAge": 4 },
+    { "id": "0:client_31", "idx": 10, "name": "NA", "state": "running", "cap": "ok", "capAge": 9 },
+    { "id": "0:client_32", "idx": 11, "name": "COC", "state": "offline", "cap": "busy", "capAge": 6 },
+    { "id": "0:client_33", "idx": 12, "name": "XOAI", "state": "running", "cap": "ok", "capAge": 11 },
+    { "id": "0:client_34", "idx": 13, "name": "CHUOI", "state": "offline", "cap": "wait", "capAge": 7 },
+    { "id": "0:client_35", "idx": 14, "name": "CAM", "state": "running", "cap": "ok", "capAge": 13 },
+    { "id": "0:client_41", "idx": 15, "name": "HANMI", "state": "offline", "cap": "wait", "capAge": 2 },
+    { "id": "0:client_42", "idx": 16, "name": "Ahihi10", "state": "running", "cap": "ok", "capAge": 18 },
+    { "id": "0:client_43", "idx": 17, "name": "Ahihi6", "state": "offline", "cap": "wait", "capAge": 3 },
+    { "id": "0:client_44", "idx": 18, "name": "Ahihi8", "state": "running", "cap": "ok", "capAge": 20 },
+    { "id": "0:client_45", "idx": 19, "name": "Ahihi9", "state": "offline", "cap": "wait", "capAge": 1 },
+    { "id": "0:client_46", "idx": 20, "name": "MachNhi", "state": "running", "cap": "ok", "capAge": 14 },
+    { "id": "0:client_47", "idx": 21, "name": "DoanVanThu", "state": "offline", "cap": "busy", "capAge": 5 },
+    { "id": "0:client_48", "idx": 22, "name": "LieuAnh", "state": "running", "cap": "ok", "capAge": 17 },
+    { "id": "0:client_49", "idx": 23, "name": "BinhDuc", "state": "offline", "cap": "wait", "capAge": 2 },
+    { "id": "0:client_50", "idx": 24, "name": "DieuLinh", "state": "running", "cap": "ok", "capAge": 19 },
+    { "id": "0:client_51", "idx": 25, "name": "Emm.Miuu", "state": "offline", "cap": "wait", "capAge": 0 },
+    { "id": "0:client_68", "idx": 26, "name": "Ghost Story PC 0", "state": "offline", "cap": "wait", "capAge": 0 },
+    { "id": "0:client_99", "idx": 27, "name": "TestUnknown", "state": "running", "cap": "ok", "capAge": 1 }
+  ]
+}
