@@ -5,11 +5,11 @@ param(
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'AUTORELOG.Ws.psm1') -Force
 
-if (-not (Test-Path $CapturePath)) { Write-Error "Thiếu $CapturePath. Chạy Capture-Ws.ps1 trước."; exit 2 }
+if (-not (Test-Path $CapturePath)) { Write-Error "Missing $CapturePath. Run Capture-Ws.ps1 first."; exit 2 }
 
 $lines = Get-Content $CapturePath -Encoding UTF8
-$snapshots = @()   # {ts, map: name->clientId, keys: idx->key, epochs: idx->epoch}
-$reconnects = @() # {tsReconnect, tsOpen, downSec}
+$snapshots = @()
+$reconnects = @()
 $lastOpen = $null
 
 foreach ($l in $lines) {
@@ -35,7 +35,6 @@ foreach ($l in $lines) {
   }
 }
 
-# --- B1: stable client_id across snapshots (match by name) ---
 $b1 = [ordered]@{}
 $names = @($snapshots | ForEach-Object { $_.map.Keys } | Sort-Object -Unique)
 foreach ($nm in $names) {
@@ -47,7 +46,6 @@ foreach ($nm in $names) {
   $b1[$nm] = [pscustomobject]@{ name = $nm; clientIds = $uniq; classification = $cls }
 }
 
-# --- B3: key / epoch semantics ---
 $b3 = [ordered]@{}
 $idxs = @($snapshots | ForEach-Object { $_.keys.Keys } | Sort-Object -Unique)
 $keyHasIdx = $true; $keySamples = @()
@@ -68,7 +66,6 @@ $b3['keyContainsIdx'] = $keyHasIdx
 $b3['keySamples'] = $keySamples
 $b3['epochChangesAcrossSnapshots'] = $epochChanges
 
-# --- B7: heartbeat interval + reconnect downtime ---
 $snapTs = @($snapshots | ForEach-Object { $_.ts })
 $ivals = @()
 for ($i = 1; $i -lt $snapTs.Count; $i++) { $ivals += [math]::Round(($snapTs[$i] - $snapTs[$i-1]).TotalSeconds, 1) }
