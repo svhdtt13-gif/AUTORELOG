@@ -22,3 +22,36 @@ Review date: 2026-08-29 | plan SHA: 2ad9cd293f12a30c5c5ad5af81fa720f617efc28
 
 ## 3. KẾT LUẬN
 v4 đã approval-ready cho Phase 0. Chỉ cần bổ sung: (1) enum `policy` + quan hệ groupId, (2) làm rõ Agent mới dùng protocol không dùng menu script cũ, (3) **thêm auth cho control API** (quan trọng do ngrok public), (4) dual-run migration, (5) quy định timezone/days. Sau đó có thể duyệt và bắt đầu Phase 0 (Discovery).
+
+
+---
+
+# PHẢN HỒI PHASE 0 — DISCOVERY REPORT (phase0.md)
+
+Review date: 2026-08-29 | phase0.md SHA: aac175c477dbf5a7547e54a48382adaa24b945d1 | plan SHA: 2ad9cd293f12a30c5c5ad5af81fa720f617efc28
+
+## Đánh giá chung
+Báo cáo Phase 0 từ HAR rất trung thực và đúng phương pháp. Quan trọng nhất: không tự suy luận vượt quá evidence (không claim stable ID bền qua restart, không claim `row_toggle` = Start/Stop tuyệt đối). Điều này khớp nguyên tắc §17 plan ("không đoán khi chưa chứng minh").
+
+## Điểm tốt
+1. Chuẩn hóa identity: bỏ prefix transport `0:` → `client_14`; `idx` không dùng làm key. ✓ Khớp §1/§3/§4 B1.
+2. Capture được `row_toggle` + `act_result` correlation, request id tăng (snghg:1,2,3). ✓
+3. Rule xác nhận đúng: send intent → wait act_result → re-read runtime → confirm. Không coi `act_result.ok` là bằng chứng RUNNING/OFFLINE. ✓ Tránh bug kinh điển.
+4. Tách biệt product-level vs client-level control. ✓
+5. Bulk = nhiều `row_toggle` per-client → scheduler phát từng client với stagger/maxParallel. ✓
+6. Security: không commit HAR nguyên, scrub auth. ✓
+7. Acceptance table trung thực: PASS các mục HAR, PENDING các mục cần PC test.
+
+## Điểm cần lưu ý / bổ sung
+1. **`row_toggle` ≠ Start/Stop rõ ràng.** Báo cáo đúng khi nói không suy luận semantics. Nhưng để Phase 1 implement, cần định nghĩa mapping: `row_toggle` trên client `offline` → thành `running`? Quan sát client_14 offline→running→offline qua `row_toggle` gợi ý nó là power toggle. Đề xuất: Agent MỚI coi `row_toggle` là toggle, và SAU ACK phải đọc snapshot xác định state thực; nếu chưa đạt desired thì retry/toggle lại (idempotency qua state, không qua request id). Ghi rõ vào plan Phase 1.
+2. **`key` format `root/1000#0`** — cần capture thêm mẫu `key` cho client khác (client_15, gr1...) để biết `key` chứa index hay client_id. Nếu `key` chứa `idx` thì phải map `key`→`client_id` qua snapshot, không hardcode.
+3. **`epoch` semantics**: `id:"snghg:1"` là request correlation id; `epoch` có thể là optimistic-concurrency token. Cần làm rõ có phải phải gửi lại giá trị `epoch` từ snapshot không (nếu sai epoch server từ chối). Chi tiết protocol cần capture thêm.
+4. **B1 stable ID VẪN PENDING** — đúng. TUYỆT ĐỐI không bật Agent control path mới cho tới khi có PC restart test. Báo cáo §11 gate đã nói rõ — tốt.
+5. **Heartbeat measured PENDING** — giữ baseline 10s/30s design, nhưng khi có Agent v1 nên đo thực tế và điều chỉnh; đừng coi baseline là validated.
+6. **Thiếu B2 (import xlsx) và B4 (group conflict) trong phase0.md.** Báo cáo chủ yếu về runtime/control. Việc import xlsx→master và validate conflict là PC/master-side, không phụ thuộc HAR, có thể làm song song. Đề xuất bổ sung status B2/B4 (chúng không cần restart Auto).
+7. **client_68 / orphan:** chưa classify live (PENDING). Khi có runtime reconciliation, xác nhận client_68 có xuất hiện trong `scr_list` không; nếu không → artifact, hard-block. Đưa vào checklist PC test.
+
+## Kết luận
+Phase 0 HAR discovery: PASS và sẵn sàng làm nền tảng cho Phase 1 (Agent observation/read-only). Các gate PC test (B1 stable ID, B2 import, B4 conflict, heartbeat đo) VẪN PENDING và là điều kiện tiên quyết trước khi bật control path. Báo cáo tuân thủ đúng nguyên tắc không đoán vượt evidence — rất tốt.
+
+Gợi ý cập nhật plan §17: chuyển từ "chờ approval Phase 0" → "Phase 0 HAR discovery COMPLETED; PC validation PENDING (gate trước Phase 1)".
