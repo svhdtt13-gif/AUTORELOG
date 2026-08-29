@@ -495,8 +495,108 @@ MVP được coi là đạt khi:
 - Ưu tiên tái sử dụng cấu trúc AUTORELOG hiện có.
 - Khi dữ liệu HAR chưa đủ chứng minh một command, đánh dấu `UNVERIFIED` thay vì đoán.
 
-## 18. Trạng thái kế hoạch
+## 18. Dữ liệu master client cần lưu ý — `clients_master.csv`
 
-Đây là bản kế hoạch v1. Chưa triển khai code điều khiển Start/Stop/Login/Logout cho đến khi protocol bridge được kiểm chứng trên PC và dữ liệu live từ `db.html`/Agent được xác nhận.
+File `clients_master.csv` được cung cấp làm dữ liệu chuẩn đầu vào cho hệ thống. File có 27 dòng client và 4 trường:
+
+```text
+client,name,group,slot_time
+```
+
+Danh sách và lịch nhóm hiện tại:
+
+### Fixed
+
+| Client | Name | Group | Slot |
+|---|---|---|---|
+| client_14 | XuyenChiXaoToi | fixed | Fixed |
+| client_15 | Bong | fixed | Fixed |
+| client_3 | ComChanNuocMat | fixed | Fixed |
+| client_1 | BoGiaDuaNon | fixed | Fixed |
+| client_13 | CayBangNon | fixed | Fixed |
+
+### gr3 — 19:45 → 12:30
+
+| Client | Name | Group | Slot |
+|---|---|---|---|
+| client_8 | khoqua10 | gr3 | 19:45 - 12:30 |
+| client_6 | Me | gr3 | 19:45 - 12:30 |
+| client_5 | khoqua07 | gr3 | 19:45 - 12:30 |
+| client_2 | khoqua08 | gr3 | 19:45 - 12:30 |
+| client_7 | khoqua09 | gr3 | 19:45 - 12:30 |
+
+### gr4 — 04:00 → 19:45
+
+| Client | Name | Group | Slot |
+|---|---|---|---|
+| client_31 | NA | gr4 | 04:00 - 19:45 |
+| client_32 | COC | gr4 | 04:00 - 19:45 |
+| client_33 | XOAI | gr4 | 04:00 - 19:45 |
+| client_34 | CHUOI | gr4 | 04:00 - 19:45 |
+| client_35 | CAM | gr4 | 04:00 - 19:45 |
+
+### gr1 — 08:00 → 04:00
+
+| Client | Name | Group | Slot |
+|---|---|---|---|
+| client_41 | HANMI | gr1 | 08:00 - 04:00 |
+| client_42 | Ahihi10 | gr1 | 08:00 - 04:00 |
+| client_43 | Ahihi6 | gr1 | 08:00 - 04:00 |
+| client_44 | Ahihi8 | gr1 | 08:00 - 04:00 |
+| client_45 | Ahihi9 | gr1 | 08:00 - 04:00 |
+
+### gr2 — 12:30 → 08:00
+
+| Client | Name | Group | Slot |
+|---|---|---|---|
+| client_46 | MachNhi | gr2 | 12:30 - 08:00 |
+| client_47 | DoanVanThu | gr2 | 12:30 - 08:00 |
+| client_48 | LieuAnh | gr2 | 12:30 - 08:00 |
+| client_49 | BinhDuc | gr2 | 12:30 - 08:00 |
+| client_50 | DieuLinh | gr2 | 12:30 - 08:00 |
+
+### Chưa xếp lịch
+
+| Client | Name | Group | Slot |
+|---|---|---|---|
+| client_51 | Emm.Miuu | none | — |
+| client_68 | Ghost Story PC 0 | none | — |
+
+### Quy tắc dữ liệu master
+
+- `client` là stable identity ưu tiên cho mapping runtime; không dùng `rowIndex` làm identity.
+- `name` là tên hiển thị/master name, có thể đối chiếu với `scr_list_res.name` nhưng không được dùng một mình làm khóa định danh.
+- `group` là nhóm lịch điều khiển; `fixed` là nhóm đặc biệt không dùng slot luân phiên như gr1–gr4.
+- `slot_time` là lịch hiện tại cần được import vào Scheduler, nhưng phải xử lý đúng lịch qua ngày (ví dụ `19:45 - 12:30`, `08:00 - 04:00`) thay vì coi giờ kết thúc nhỏ hơn giờ bắt đầu là lỗi.
+- `none / —` nghĩa là chưa được xếp lịch tự động; không tự đưa client vào Scheduler.
+- Không tự thay đổi group/slot khi runtime discovery thấy khác master. Phải tạo trạng thái `mismatch` để người quản trị xác nhận.
+- Dữ liệu master này là cấu hình lịch, còn runtime (`running`, `offline`, `cap`, login state...) phải lấy từ Agent/Auto Ghost Story.
+
+### Lịch nhóm suy ra từ master data
+
+```text
+fixed : 5 clients — lịch cố định, chưa tự suy diễn giờ bật/tắt
+
+gr3   : 19:45 → 12:30 — 5 clients
+        client_8, client_6, client_5, client_2, client_7
+
+gr4   : 04:00 → 19:45 — 5 clients
+        client_31, client_32, client_33, client_34, client_35
+
+gr1   : 08:00 → 04:00 — 5 clients
+        client_41, client_42, client_43, client_44, client_45
+
+gr2   : 12:30 → 08:00 — 5 clients
+        client_46, client_47, client_48, client_49, client_50
+
+none  : 2 clients — chưa có lịch
+        client_51, client_68
+```
+
+Không coi các khoảng trên là lịch production cuối cùng cho đến khi đối chiếu với `lich trinh tat mo.xlsx` và dữ liệu live `db.html`/Agent.
+
+## 19. Trạng thái kế hoạch
+
+Đây là bản kế hoạch v2, đã bổ sung dữ liệu master client/group/slot từ `clients_master.csv`. Chưa triển khai code điều khiển Start/Stop/Login/Logout cho đến khi protocol bridge được kiểm chứng trên PC và dữ liệu live từ `db.html`/Agent được xác nhận.
 
 Bước tiếp theo: chờ phản hồi/điều chỉnh yêu cầu trước khi bắt đầu sửa code.
