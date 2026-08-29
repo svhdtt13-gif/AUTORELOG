@@ -40,7 +40,7 @@ foreach ($m in $merged) {
     lastError       = $null
   }
   if ($m.masterPresent) {
-    $client.desiredState = Get-DesiredState -Client @{ client = $m.clientId; group = $m.group } -Windows $windows
+    $client.desiredState = Get-DesiredState -Client @{ clientId = $m.clientId; name = $m.name; group = $m.group; policy = $m.policy } -Windows $windows
   } else {
     $client.desiredState = 'unknown'
   }
