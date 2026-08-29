@@ -85,3 +85,8 @@ Plan được tái cấu trúc rất gọn và đúng hướng: chuyển từ "k
 
 ## Kết luận
 Plan theo hướng xử lý tiếp theo rất tốt và sẵn sàng làm việc. Bổ sung: (1) hành động từng lớp B1, (2) clarify toggle-vs-absolute B2, (3) giả thuyết key=idx B3, (4) validator wraparound B4, (5) auth control API, (6) Agent connect Remote, (7) dual-run/canary migration. Sau đó có thể bắt đầu B1 trên PC thật.
+
+
+---
+PLAN UPDATED at 2026-08-29 23:47:59 (SHA 26aa4fcecd865e51408e903440025135da94ecf5) - AI re-review required. Latest full review kept above.
+---
