@@ -1,602 +1,279 @@
-# KẾ HOẠCH AUTOGHOSTSTORY CLIENT MANAGER
+# KẾ HOẠCH TRIỂN KHAI v3 — AUTORELOG / AutoGhostStory Client Manager
 
-## 0. Mục tiêu
+Ngày review: 2026-08-29
 
-Xây dựng một hệ thống quản lý các client của Auto Ghost Story trên PC, lấy AUTORELOG làm nền tảng hiện có. Hệ thống gồm:
+## 0. Kết luận từ `phản hồi`
 
-- Agent/Controller chạy trên PC có Auto Ghost Story.
-- Web dashboard để xem client realtime.
-- Master data làm nguồn dữ liệu chính cho client/group/slot.
-- Scheduler lập lịch bật/tắt client theo nhóm.
-- Theo dõi trạng thái kết nối, runtime, đăng nhập và lỗi.
-- Hỗ trợ thao tác hàng loạt nhưng có giới hạn an toàn, idempotent và có log/audit.
+Plan v2 được đánh giá là khung tốt nhưng phải xử lý trước khi code: stable client ID; lịch qua ngày; chính sách `fixed`/`none`; JSON làm canonical; giữ `/api/master`; group conflict; reconnect/heartbeat ngay Agent v1; không lưu credential; xác minh mapping thực tế. Phản hồi này là nguồn yêu cầu chính của v3.
 
-Phạm vi ban đầu tập trung vào quản lý client, KHÔNG triển khai logic của 25 tính năng gameplay của Auto Ghost Story.
+Phạm vi: quản lý client Auto Ghost Story trên PC; chưa triển khai 25 tính năng gameplay.
 
-## 1. Căn cứ dữ liệu đã phân tích
+## 1. Baseline phải giữ
 
-### Auto Ghost Story / 360Auto Remote
+Tái sử dụng: `db.html`, `serve.ps1`, `sync_master.ps1`, `AutoCycle.ps1`, `clients_master.json`, `clients_master.csv`, `lich trinh tat mo.xlsx`.
 
-Các dữ liệu đã quan sát được từ HAR của Auto Ghost Story (`product_id=73`):
+`clients_master.json` là **canonical** trong Phase 1; không thêm SQLite làm nguồn truth thứ hai. SQLite/PostgreSQL chỉ xem xét khi có nhu cầu nhiều PC/Agent và có migration rõ ràng.
 
-- Một app/room Ghost Story có thể quản lý nhiều client/instance.
-- Danh sách UI đã quan sát có 27 client; số lượng có thể thay đổi.
-- Client có các thuộc tính chính: index/row, client/instance id, tên, `checked`, trạng thái, cấp và một số dữ liệu game.
-- `checked` là trạng thái chọn client, KHÔNG đồng nghĩa với đang chạy.
-- Runtime registry (`scr_list` / `scr_list_res`) cung cấp `client id`, `name`, `state`, `cap`, `capAge`.
-- Runtime state quan sát được gồm tối thiểu `running` và `offline`.
-- UI lifecycle quan sát được gồm các trạng thái như `OFFLINE`, `Mất kết nối`, `Đang kết nối`, `Đang chuẩn bị`, `Đang khởi tạo`, `Chờ load game`, `Đang load game`, `Đăng nhập thành công`, `Đang hoạt động`, `Đang chờ`, `Tạm dừng`.
-- Remote nhận snapshot ban đầu và các delta thay đổi trạng thái.
-- Có cơ chế `row_toggle` để chọn/bỏ chọn client.
-- Có menu thao tác cho một client và menu thao tác toàn bộ.
-- Menu toàn bộ đã quan sát có các thao tác như bật tất cả, dừng tất cả, bật/dừng/tắt từ vị trí, hiện/ẩn tất cả, sắp xếp cửa sổ, xoá OFFLINE.
-- Lifecycle login đã quan sát được: load game -> đăng nhập thành công -> đang hoạt động.
-- Đã quan sát trường hợp Auto yêu cầu đăng nhập lại khi không tìm thấy danh sách nhân vật.
-- `machine`, `room`, `product_id=73` thuộc tầng app/room; không được nhầm `room` với client instance.
+Giữ nguyên `GET /api/master` để không làm hỏng `db.html`; API mới chỉ mở rộng dần.
 
-### AUTORELOG hiện tại
+## 2. Dữ liệu Auto Ghost Story đã xác định
 
-README của repo xác định kiến trúc hiện có:
+`product_id=73` là Auto Ghost Story. Một room/app có nhiều client/instance. Quan sát có 27 client nhưng runtime count có thể thay đổi.
 
-- Master Data table là single source of truth cho clients/groups/slots.
-- Có đồng bộ CSV và AutoCycle.
-- Có Live DB Status.
-- Dynamic groups, mỗi group hiện được mô tả là 5 clients + slot.
-- Có `db.html`, `serve.ps1`, `sync_master.ps1`, `AutoCycle.ps1`, `clients_master.json`, `clients_master.csv`.
-- Có `lich trinh tat mo.xlsx` trong repo, cần dùng làm nguồn tham khảo cho lịch tắt/mở hiện tại.
+`rowIndex` chỉ là vị trí UI, **không làm identity**. `checked` chỉ là selection, không phải running.
 
-Nguồn `db.html` công khai tại `crown-repeal-polar.ngrok-free.dev/db.html` cần được kết nối/kiểm tra lại trong bước implementation vì tại thời điểm lập kế hoạch không truy xuất được nội dung live từ môi trường phân tích.
+`scr_list/scr_list_res` cung cấp `client id`, `name`, `state`, `cap`, `capAge`. Runtime có `running/offline`. UI có lifecycle: `OFFLINE`, `Mất kết nối`, `Đang kết nối`, `Đang chuẩn bị`, `Đang khởi tạo`, `Chờ load game`, `Đang load game`, `Đăng nhập thành công`, `Đang hoạt động`, `Đang chờ`, `Tạm dừng`.
 
-## 2. Kiến trúc mục tiêu
+Đã thấy snapshot/delta realtime, `row_toggle`, menu client/toàn bộ, login/relogin và các thao tác bulk. **Không suy đoán menu path thành Start/Stop/Login nếu chưa capture action thực tế.**
 
-```text
-                         WEB DASHBOARD
-                              |
-                         HTTPS / API
-                              |
-                    +---------+---------+
-                    | Scheduler / DB   |
-                    | Master Data      |
-                    +---------+---------+
-                              |
-                         Agent API
-                              |
-                    +---------+---------+
-                    | PC CONTROLLER     |
-                    | AutoGhostStory    |
-                    +---------+---------+
-                              |
-                    +---------+---------+
-                    | 360Auto / Local   |
-                    | client instances  |
-                    +-------------------+
+`machine`/`room` là tầng app; `client instance` là tầng client. Không nhầm `room` với client.
+
+## 3. Blocker Phase 0
+
+### B1 — Stable ID
+
+Trên PC thật: lấy `scr_list_res` → restart Auto → lấy lại → restart PC nếu có thể → so sánh `client_XX → name`. Nếu ID bền, dùng làm primary identity. Nếu không bền, phải xây mapping identity đã xác minh; tuyệt đối không dùng rowIndex.
+
+### B2 — Lịch qua ngày
+
+Import `lich trinh tat mo.xlsx`, đối chiếu master. Lịch phải biểu diễn rõ wraparound, ví dụ:
+
+```json
+{"start":"19:45","end":"12:30","endDayOffset":1}
 ```
 
-Nguyên tắc: Web không điều khiển trực tiếp process/game. Web gửi intent tới Controller/Agent; Agent kiểm tra trạng thái thực tế rồi mới thực hiện action. Điều này giúp retry và chống bật/tắt nhầm.
+Validator phải phát hiện: overlap, duplicate, end trước start thiếu offset, group/client không tồn tại và lịch không hợp lệ. Không activate schedule khi validation fail.
 
-## 3. Data model
+### B3 — `fixed` và `none`
 
-### Client
+`fixed`: mặc định **không thuộc scheduler quay vòng**; không tự Start/Stop. Chỉ thao tác thủ công hoặc lịch explicit được gán.
+
+`none`: không scheduler. `client_68 / Ghost Story PC 0` nếu xác nhận là artifact discovery thì gắn `orphan/unknown`, chỉ cảnh báo.
+
+### B4 — Group conflict
+
+Phase 1: một client chỉ thuộc một scheduling group. Nếu một client xuất hiện trong nhiều group có lịch → `CONFIG_CONFLICT`, scheduler từ chối action liên quan và audit.
+
+## 4. Canonical data model
+
+Client cần tách rõ:
 
 ```json
 {
-  "id": "client_14",
-  "machineId": "...",
-  "roomId": "...",
-  "productId": 73,
-  "name": "XuyếnChiXàoTỏi",
-  "rowIndex": 0,
-  "enabled": true,
-  "selected": true,
-  "runtimeState": "running",
-  "uiState": "Đang hoạt động",
-  "capability": "ok",
-  "capabilityAge": 0,
-  "lastSeen": "...",
-  "loginState": "logged_in",
-  "desiredState": "running",
-  "lastAction": "start",
-  "lastActionAt": "...",
-  "lastError": null,
-  "groupIds": ["G01"]
+  "id":"client_14",
+  "machineId":"...",
+  "roomId":"...",
+  "productId":73,
+  "name":"XuyếnChiXàoTỏi",
+  "rowIndex":0,
+  "groupId":"gr1",
+  "enabled":true,
+  "selected":false,
+  "runtimeState":"running",
+  "uiState":"Đang hoạt động",
+  "loginState":"logged_in",
+  "capability":"ok",
+  "capabilityAge":0,
+  "lastSeen":"...",
+  "desiredState":"running",
+  "lastAction":"start",
+  "lastError":null,
+  "identityVerified":false,
+  "orphan":false
 }
 ```
 
-Không dùng `checked` làm trạng thái chạy. `selected`, `desiredState`, `runtimeState`, `uiState`, `loginState` phải là các khái niệm riêng.
+`selected`, `desiredState`, `runtimeState`, `uiState`, `loginState`, `enabled` là các khái niệm độc lập.
 
-### Group
+Group:
 
 ```json
-{
-  "id": "G01",
-  "name": "Nhóm 01",
-  "description": "...",
-  "clientIds": ["client_14", "client_15"],
-  "enabled": true,
-  "timezone": "Asia/Ho_Chi_Minh"
-}
+{"id":"gr1","name":"Group 1","clientIds":["client_14","client_15"],"enabled":true,"schedulerEnabled":true,"timezone":"Asia/Ho_Chi_Minh"}
 ```
 
-Cho phép group có số lượng client linh hoạt, nhưng giữ compatibility với mô hình hiện tại 5 clients + slot của AUTORELOG.
-
-### Schedule
+Schedule:
 
 ```json
-{
-  "id": "SCH001",
-  "name": "Nhóm 01 - sáng",
-  "groupId": "G01",
-  "action": "start",
-  "time": "06:30",
-  "days": [1,2,3,4,5,6,7],
-  "enabled": true,
-  "staggerSeconds": 30,
-  "maxParallel": 2,
-  "retry": 2,
-  "retryDelaySeconds": 60,
-  "gracePeriodSeconds": 120
-}
+{"id":"SCH001","groupId":"gr1","action":"start","start":"08:00","end":"04:00","endDayOffset":1,"days":[1,2,3,4,5,6,7],"enabled":true,"staggerSeconds":30,"maxParallel":2,"retry":2,"retryDelaySeconds":60,"gracePeriodSeconds":120}
 ```
 
-Có thể mở rộng `action` thành `start`, `stop`, `login`, `logout` nếu sau khi kiểm chứng protocol thực tế các action này được hỗ trợ rõ ràng.
+Scheduler v1 không coi `login/logout` là action độc lập; login/relogin là lifecycle của Start cho tới khi protocol thực tế chứng minh khác.
 
-## 4. Scheduler
+## 5. Phase 0 — Discovery / Validation
 
-Scheduler phải hỗ trợ:
+Deliverables:
 
-1. Lịch bật một nhóm.
-2. Lịch tắt một nhóm.
-3. Lịch bật/tắt nhiều nhóm.
-4. Lịch theo ngày trong tuần.
-5. Lịch một lần.
-6. Stagger: không bật toàn bộ client cùng một giây.
-7. Giới hạn số client chạy song song.
-8. Retry khi action thất bại.
-9. Không gửi Start nếu client đã ở trạng thái running/active.
-10. Không gửi Stop nếu client đã offline/stopped.
-11. Sau action phải chờ state transition và xác nhận kết quả.
-12. Nếu client đang `Đang kết nối/Đang load game/Đăng nhập` thì Scheduler phải coi đây là trạng thái chuyển tiếp và không phát lệnh đối nghịch ngay lập tức.
+1. Runtime discovery report.
+2. Master ↔ runtime mapping.
+3. Stable ID test qua restart.
+4. Schedule validation report.
+5. Group conflict report.
+6. `fixed`/`none`/`orphan` classification.
+7. Capture Start/Stop thật trên một client test.
 
-### State machine
+Nếu B1 hoặc protocol Start/Stop chưa xác minh → **không triển khai automation**; yêu cầu thêm HAR/local evidence.
+
+## 6. Phase 1 — Agent v1
+
+Agent trên PC chịu trách nhiệm: discovery Auto/room/client; đọc `scr_list`; runtime registry; snapshot/delta nếu được phép; heartbeat; reconnect; mapping master; báo `known/new/offline/orphan/identity_mismatch`; nhận intent Start/Stop; xác nhận bằng state thật.
+
+Reconnect phải có ngay v1: heartbeat timeout, exponential backoff, không gửi lệnh khi connection unhealthy, reconnect xong phải lấy snapshot mới trước khi xử lý queue.
+
+Credential: Agent không log password/token; web không nhận credential game; Controller chỉ gửi intent và nhận result/state.
+
+## 7. Phase 2 — Registry + Master Sync
 
 ```text
-OFFLINE
-  -> START_REQUESTED
-  -> CONNECTING
-  -> PREPARING
-  -> INITIALIZING
-  -> LOADING_GAME
-  -> LOGIN
-  -> RUNNING
-
-RUNNING
-  -> STOP_REQUESTED
-  -> PAUSING/STOPPING
-  -> OFFLINE
-
-LOGIN
-  -> LOGIN_FAILED
-  -> LOGIN_RETRY
-  -> RUNNING
+Runtime discovery → identity match → known/new/orphan/mismatch → master validation → runtime registry
 ```
 
-Tên state nội bộ nên dùng enum tiếng Anh ổn định; UI có thể hiển thị tiếng Việt theo state mapping từ Auto.
+Không tự đổi group. Client mới không tự chạy lịch. Client mất không xóa master. Giữ `lastSeen`. Identity mismatch chặn automation của client đó.
 
-## 5. Web dashboard
+## 8. Phase 3 — Scheduler
 
-### Trang tổng quan
+Hỗ trợ Start/Stop group và bulk Start/Stop nhiều group nếu không conflict.
 
-Hiển thị:
+Rules bắt buộc:
 
-- Tổng client.
-- Running.
-- Offline.
-- Đang đăng nhập.
-- Đang chuyển trạng thái.
-- Lỗi.
-- Số group.
-- Scheduler đang hoạt động hay không.
-- Lịch action tiếp theo.
+1. Không Start nếu đã running/active.
+2. Không Stop nếu offline/stopped.
+3. Chờ và xác nhận state transition.
+4. Không phát lệnh đối nghịch khi connecting/loading/login.
+5. `staggerSeconds`.
+6. `maxParallel`.
+7. Retry hữu hạn.
+8. Per-client lock.
+9. `requestId`/idempotency key.
+10. Timeout/grace period.
+11. Audit mọi action.
+12. Agent mất kết nối → pause action cho PC đó.
 
-### Bảng client
-
-Cột đề xuất:
+State machine:
 
 ```text
-Chọn | Client | Group | Runtime | UI Status | Login | Capability | Last Seen | Action
+OFFLINE → START_REQUESTED → CONNECTING → PREPARING → INITIALIZING → LOADING_GAME → LOGIN/RELOGIN → RUNNING
+RUNNING → STOP_REQUESTED → STOPPING/PAUSING → OFFLINE
 ```
 
-Có filter:
+`LOGIN_FAILED`/`RELOGIN_REQUIRED` không được coi là RUNNING.
 
-- Group.
-- Running/offline.
-- Login state.
-- Capability.
-- Có lỗi.
-- Có lịch.
+## 9. Phase 4 — Web Dashboard
 
-Có bulk selection nhưng phải hiển thị rõ số client bị tác động trước khi xác nhận.
+Dashboard: tổng client, running/offline, connecting/loading/login, lỗi, group, scheduler, next action, Agent heartbeat.
 
-### Trang Groups
-
-- Tạo/sửa/xóa group.
-- Kéo thả client vào group.
-- Thứ tự client.
-- Bật/tắt group.
-- Xem lịch của group.
-
-### Trang Scheduler
-
-Calendar/list view:
+Client table:
 
 ```text
-06:00  G01 START
-06:30  G02 START
-12:00  G01 STOP
-18:00  G01 START
-23:30  G01 STOP
+Chọn | Client | Group | Runtime | UI Status | Login | Capability | Last Seen | Desired | Action
 ```
 
-Cho phép chỉnh `stagger`, `maxParallel`, retry và ngày chạy.
+Filter group/state/login/capability/error. Bulk action phải có preview số lượng sẽ Start/Stop, conflict, offline, already-running và thực tế sẽ tác động.
 
-### Trang lịch sử
+Groups: tạo/sửa/xóa, assign client, chống multi-group, enable/disable scheduler, xem lịch.
 
-Audit log:
+Scheduler: calendar/list, lịch qua ngày, stagger, maxParallel, retry.
+
+Audit:
 
 ```text
-timestamp | actor | target | action | oldState | newState | result | error
+time | actor | target | action | desired | old | new | result | error
 ```
 
-## 6. Agent trên PC
+## 10. API mở rộng, không phá API cũ
 
-Agent chịu trách nhiệm:
-
-- Phát hiện Auto Ghost Story/room/client.
-- Nhận snapshot/runtime state.
-- Theo dõi `scr_list` và state changes.
-- Map instance ID vào master data.
-- Thực hiện action được Scheduler yêu cầu.
-- Xác nhận action bằng state thực tế.
-- Reconnect khi WebSocket/local connection mất.
-- Báo heartbeat.
-
-Agent không lưu secret vào Git. Token/API credentials phải nằm trong config local hoặc secret store.
-
-## 7. Đồng bộ Master Data
-
-Giữ `clients_master.json` và `clients_master.csv` làm nguồn dữ liệu cấu hình.
-
-Flow:
+Giữ:
 
 ```text
-Auto/Agent discovery
-       ↓
-client identity
-       ↓
-match master data
-       ↓
-new / known / orphan
-       ↓
-DB + master sync
+GET /api/master
 ```
 
-Không tự động đổi group chỉ vì row index thay đổi. Identity phải dựa vào stable client/instance ID nếu có; nếu không có thì dùng cơ chế mapping có xác nhận.
-
-## 8. Xử lý client mới / mất client
-
-### Client mới
-
-- Đưa vào `discovered`.
-- Không tự chạy lịch nếu chưa được assign group.
-- Hiển thị cảnh báo trên dashboard.
-
-### Client mất
-
-- `lastSeen` được giữ lại.
-- Chuyển `connectionState=offline` sau timeout.
-- Không xóa master data tự động.
-- Có nút `Remove` riêng.
-
-### Xóa OFFLINE
-
-Chỉ là thao tác dọn runtime/discovered data. Không được xóa master record nếu chưa có xác nhận.
-
-## 9. Login
-
-Tách login thành state riêng:
+Thêm dần:
 
 ```text
-unknown
-not_logged_in
-logging_in
-logged_in
-login_failed
-relogin_required
-```
-
-Auto đã cho thấy trường hợp cần đăng nhập lại. Scheduler phải xử lý:
-
-```text
-start
-  ↓
-wait for game load
-  ↓
-login/relogin if required
-  ↓
-wait logged_in
-  ↓
-wait active/running
-```
-
-Không lưu mật khẩu game trong web dashboard nếu không cần thiết. Nếu Auto đã quản lý credential, Controller chỉ gửi intent và đọc kết quả trạng thái.
-
-## 10. API nội bộ đề xuất
-
-```text
-GET    /api/clients
-GET    /api/clients/:id
-POST   /api/clients/:id/start
-POST   /api/clients/:id/stop
-POST   /api/clients/:id/login
-POST   /api/clients/:id/logout
-POST   /api/clients/bulk-action
-
-GET    /api/groups
-POST   /api/groups
-PUT    /api/groups/:id
+GET  /api/clients
+GET  /api/clients/:id
+GET  /api/groups
+GET  /api/schedules
+GET  /api/events
+GET  /api/health
+POST /api/clients/:id/start
+POST /api/clients/:id/stop
+POST /api/clients/bulk-action
+POST /api/groups
+PUT  /api/groups/:id
 DELETE /api/groups/:id
-
-GET    /api/schedules
-POST   /api/schedules
-PUT    /api/schedules/:id
+POST /api/schedules
+PUT  /api/schedules/:id
 DELETE /api/schedules/:id
-POST   /api/schedules/:id/run-now
-
-GET    /api/events
-GET    /api/health
+POST /api/schedules/:id/run-now
 ```
 
-Các endpoint Start/Stop/Login/Logout chỉ được bật sau khi protocol/action tương ứng được kiểm chứng từ HAR hoặc từ Controller/Auto local. Không hard-code command/path chỉ dựa vào vị trí menu.
+`login/logout` chỉ thêm khi protocol thực tế được chứng minh.
 
-## 11. Database
+## 11. Import lịch hiện tại
 
-Có thể bắt đầu bằng SQLite để chạy trên PC:
+`lich trinh tat mo.xlsx` → parse → normalize → validate wraparound → validate group/client → validate conflicts → JSON schedule → review → activate.
+
+Không activate khi fail validation; không làm mất lịch cũ.
+
+## 12. Không SQLite ở Phase 1
+
+Canonical: `clients_master.json` + `clients_master.csv`. Runtime/cache ở file riêng hoặc memory Agent. Chỉ migration sang DB thật khi có yêu cầu multi-PC/Agent.
+
+## 13. An toàn
+
+Per-client lock; scheduler global pause; Emergency Stop ở Agent; không gửi lệnh mù khi mất kết nối; retry giới hạn; không credential trong audit; không commit token/session/HAR; bulk preview; audit; validate config trước activate.
+
+## 14. Test plan
+
+Identity: restart Auto, restart PC, verify ID/name.
+
+State: Offline→Start→Running; Running→Stop→Offline; login/relogin; network loss→reconnect.
+
+Scheduler: Start/Stop group, overnight, stagger, maxParallel, retry, duplicate, conflict, fixed/none exclusion.
+
+Recovery: Agent restart, Auto restart, web restart, ngrok/network interruption, state reconciliation.
+
+## 15. Thứ tự code
 
 ```text
-machines
-rooms
-clients
-client_groups
-schedules
-schedule_runs
-client_events
-audit_logs
-settings
+0 Discovery + stable-ID validation
+1 Master validator + XLSX schedule importer
+2 Agent heartbeat/reconnect + runtime registry
+3 Read-only API + db.html status
+4 Verified single-client Start/Stop
+5 Group scheduler
+6 Bulk scheduler + stagger/maxParallel
+7 Audit/error dashboard
+8 Hardening + recovery tests
 ```
 
-Sau này nếu cần nhiều PC có thể chuyển sang PostgreSQL.
+Mỗi phase có test + commit riêng. Không code toàn bộ một lần.
 
-## 12. Concurrency và an toàn
+## 16. Tiêu chí v1
 
-Các rule bắt buộc:
+- Stable identity đã xác minh.
+- Runtime/login/UI state hiển thị đúng.
+- `checked` không bị coi là running.
+- Không dùng rowIndex làm key.
+- Lịch import/qua ngày đúng.
+- `fixed` và `none/orphan` không bị scheduler tự ý điều khiển.
+- Không multi-group conflict.
+- Start/Stop được xác nhận bằng runtime state.
+- Group scheduler có stagger/maxParallel/retry.
+- Reconnect/heartbeat hoạt động.
+- `/api/master` tương thích.
+- Mọi action audit.
+- Không credential xuất hiện trong web/log/repo.
 
-- Một client không có hai action trái chiều cùng lúc.
-- Mỗi action có `requestId`/idempotency key.
-- Action có timeout.
-- Retry có giới hạn.
-- Scheduler lock theo client.
-- Bulk action phải có preview.
-- Có nút Stop Scheduler/Emergency Stop ở Agent.
-- Nếu mất kết nối với Auto thì không tiếp tục gửi lệnh mù.
-- Mọi thay đổi trạng thái phải ghi audit log.
+## 17. Trạng thái
 
-## 13. Xử lý lịch tắt/mở hiện tại
+**PLAN ONLY. Chưa sửa code điều khiển Auto.** Bước tiếp theo là Phase 0. Chỉ sau khi stable ID và Start/Stop protocol được xác minh mới code Agent điều khiển.
 
-Repo đã có file `lich trinh tat mo.xlsx`. Trước khi implementation Scheduler mới:
+## 18. Quy trình review tự động
 
-1. Đọc toàn bộ workbook.
-2. Chuẩn hóa thành JSON schedule.
-3. So sánh với `clients_master.json/csv`.
-4. Xác định group/slot hiện tại.
-5. Không làm mất lịch cũ.
-6. Import vào bảng `schedules`.
-7. Cho phép dashboard chỉnh sửa sau khi import.
-
-## 14. Roadmap triển khai
-
-### Phase 1 — Discovery
-
-- Chuẩn hóa danh sách client.
-- Xác định stable identity.
-- Đọc workbook lịch hiện tại.
-- Xác định chính xác action Start/Stop/Login/Logout từ HAR/Agent.
-- Xác định API local/bridge hiện có của AUTORELOG.
-
-### Phase 2 — Client Registry
-
-- Agent heartbeat.
-- Runtime discovery.
-- DB clients.
-- UI bảng client realtime.
-- Mapping client ↔ group.
-
-### Phase 3 — Control
-
-- Start một client.
-- Stop một client.
-- Login/relogin nếu protocol hỗ trợ.
-- State confirmation.
-- Audit log.
-
-### Phase 4 — Groups
-
-- CRUD group.
-- Bulk selection.
-- Group status.
-- Group action.
-
-### Phase 5 — Scheduler
-
-- Schedule CRUD.
-- Start/stop theo group.
-- Stagger.
-- Max parallel.
-- Retry.
-- Conflict detection.
-
-### Phase 6 — Production hardening
-
-- Reconnect.
-- Recovery.
-- Idempotency.
-- Error dashboard.
-- Backup/restore.
-- Local authentication.
-- Secret handling.
-
-## 15. MVP acceptance criteria
-
-MVP được coi là đạt khi:
-
-1. Dashboard phát hiện đúng client Ghost Story trên PC.
-2. Hiển thị đúng online/offline và runtime state.
-3. Không nhầm `checked` với running.
-4. Có group chứa nhiều client.
-5. Có lịch Start/Stop cho group.
-6. Scheduler không gửi duplicate action.
-7. Có stagger giữa các client.
-8. Sau Start/Stop hệ thống xác nhận state thực tế.
-9. Có lịch sử mọi action.
-10. Restart Agent không làm mất lịch.
-11. Client offline không bị gửi lệnh vô ích.
-12. Client mới không tự động chạy nếu chưa được assign group.
-
-## 16. Việc cần làm ngay sau kế hoạch
-
-Ưu tiên theo thứ tự:
-
-1. Đọc và chuẩn hóa `lich trinh tat mo.xlsx`.
-2. Kiểm tra cấu trúc thực tế của `clients_master.json/csv`.
-3. Đọc `AutoCycle.ps1`, `serve.ps1`, `sync_master.ps1` để tái sử dụng thay vì viết lại.
-4. Xác định bridge giữa AUTORELOG và Auto Ghost Story trên PC.
-5. Tạo DB schema cho clients/groups/schedules/events.
-6. Làm Client Registry trước.
-7. Sau khi registry ổn định mới bật Start/Stop.
-8. Sau khi Start/Stop ổn định mới bật Scheduler hàng loạt.
-
-## 17. Nguyên tắc phát triển
-
-- Không hard-code row index làm identity.
-- Không hard-code menu path nếu chưa có protocol contract.
-- Không coi `checked`, `runtimeState`, `uiState`, `loginState` là một trường.
-- Không để browser trực tiếp giữ credential/token của Auto.
-- Không commit token, password, ngrok credential hoặc session vào repo.
-- Mọi action điều khiển phải có log và kết quả xác nhận.
-- Ưu tiên tái sử dụng cấu trúc AUTORELOG hiện có.
-- Khi dữ liệu HAR chưa đủ chứng minh một command, đánh dấu `UNVERIFIED` thay vì đoán.
-
-## 18. Dữ liệu master client cần lưu ý — `clients_master.csv`
-
-File `clients_master.csv` được cung cấp làm dữ liệu chuẩn đầu vào cho hệ thống. File có 27 dòng client và 4 trường:
+Mỗi phản hồi mới trong `phản hồi` phải được đọc trước implementation:
 
 ```text
-client,name,group,slot_time
+phản hồi mới → đối chiếu plan → cập nhật blocker/decision → commit plan → chỉ sau approval mới code phase tương ứng
 ```
-
-Danh sách và lịch nhóm hiện tại:
-
-### Fixed
-
-| Client | Name | Group | Slot |
-|---|---|---|---|
-| client_14 | XuyenChiXaoToi | fixed | Fixed |
-| client_15 | Bong | fixed | Fixed |
-| client_3 | ComChanNuocMat | fixed | Fixed |
-| client_1 | BoGiaDuaNon | fixed | Fixed |
-| client_13 | CayBangNon | fixed | Fixed |
-
-### gr3 — 19:45 → 12:30
-
-| Client | Name | Group | Slot |
-|---|---|---|---|
-| client_8 | khoqua10 | gr3 | 19:45 - 12:30 |
-| client_6 | Me | gr3 | 19:45 - 12:30 |
-| client_5 | khoqua07 | gr3 | 19:45 - 12:30 |
-| client_2 | khoqua08 | gr3 | 19:45 - 12:30 |
-| client_7 | khoqua09 | gr3 | 19:45 - 12:30 |
-
-### gr4 — 04:00 → 19:45
-
-| Client | Name | Group | Slot |
-|---|---|---|---|
-| client_31 | NA | gr4 | 04:00 - 19:45 |
-| client_32 | COC | gr4 | 04:00 - 19:45 |
-| client_33 | XOAI | gr4 | 04:00 - 19:45 |
-| client_34 | CHUOI | gr4 | 04:00 - 19:45 |
-| client_35 | CAM | gr4 | 04:00 - 19:45 |
-
-### gr1 — 08:00 → 04:00
-
-| Client | Name | Group | Slot |
-|---|---|---|---|
-| client_41 | HANMI | gr1 | 08:00 - 04:00 |
-| client_42 | Ahihi10 | gr1 | 08:00 - 04:00 |
-| client_43 | Ahihi6 | gr1 | 08:00 - 04:00 |
-| client_44 | Ahihi8 | gr1 | 08:00 - 04:00 |
-| client_45 | Ahihi9 | gr1 | 08:00 - 04:00 |
-
-### gr2 — 12:30 → 08:00
-
-| Client | Name | Group | Slot |
-|---|---|---|---|
-| client_46 | MachNhi | gr2 | 12:30 - 08:00 |
-| client_47 | DoanVanThu | gr2 | 12:30 - 08:00 |
-| client_48 | LieuAnh | gr2 | 12:30 - 08:00 |
-| client_49 | BinhDuc | gr2 | 12:30 - 08:00 |
-| client_50 | DieuLinh | gr2 | 12:30 - 08:00 |
-
-### Chưa xếp lịch
-
-| Client | Name | Group | Slot |
-|---|---|---|---|
-| client_51 | Emm.Miuu | none | — |
-| client_68 | Ghost Story PC 0 | none | — |
-
-### Quy tắc dữ liệu master
-
-- `client` là stable identity ưu tiên cho mapping runtime; không dùng `rowIndex` làm identity.
-- `name` là tên hiển thị/master name, có thể đối chiếu với `scr_list_res.name` nhưng không được dùng một mình làm khóa định danh.
-- `group` là nhóm lịch điều khiển; `fixed` là nhóm đặc biệt không dùng slot luân phiên như gr1–gr4.
-- `slot_time` là lịch hiện tại cần được import vào Scheduler, nhưng phải xử lý đúng lịch qua ngày (ví dụ `19:45 - 12:30`, `08:00 - 04:00`) thay vì coi giờ kết thúc nhỏ hơn giờ bắt đầu là lỗi.
-- `none / —` nghĩa là chưa được xếp lịch tự động; không tự đưa client vào Scheduler.
-- Không tự thay đổi group/slot khi runtime discovery thấy khác master. Phải tạo trạng thái `mismatch` để người quản trị xác nhận.
-- Dữ liệu master này là cấu hình lịch, còn runtime (`running`, `offline`, `cap`, login state...) phải lấy từ Agent/Auto Ghost Story.
-
-### Lịch nhóm suy ra từ master data
-
-```text
-fixed : 5 clients — lịch cố định, chưa tự suy diễn giờ bật/tắt
-
-gr3   : 19:45 → 12:30 — 5 clients
-        client_8, client_6, client_5, client_2, client_7
-
-gr4   : 04:00 → 19:45 — 5 clients
-        client_31, client_32, client_33, client_34, client_35
-
-gr1   : 08:00 → 04:00 — 5 clients
-        client_41, client_42, client_43, client_44, client_45
-
-gr2   : 12:30 → 08:00 — 5 clients
-        client_46, client_47, client_48, client_49, client_50
-
-none  : 2 clients — chưa có lịch
-        client_51, client_68
-```
-
-Không coi các khoảng trên là lịch production cuối cùng cho đến khi đối chiếu với `lich trinh tat mo.xlsx` và dữ liệu live `db.html`/Agent.
-
-## 19. Trạng thái kế hoạch
-
-Đây là bản kế hoạch v2, đã bổ sung dữ liệu master client/group/slot từ `clients_master.csv`. Chưa triển khai code điều khiển Start/Stop/Login/Logout cho đến khi protocol bridge được kiểm chứng trên PC và dữ liệu live từ `db.html`/Agent được xác nhận.
-
-Bước tiếp theo: chờ phản hồi/điều chỉnh yêu cầu trước khi bắt đầu sửa code.
