@@ -229,4 +229,31 @@ function Test-MasterModel {
   return $rep
 }
 
-Export-ModuleMember -Function ConvertFrom-ScrList, Get-ClientPolicy, Get-NowInTz, Get-ScheduleWindows, Get-DesiredState, Merge-MasterRuntime, Resolve-KeyToClient, Test-MasterModel
+# --- Process / connection liveness (local PC control) ---
+# Trả process object nếu có qnyh.exe mang -instance:$cid (dùng để lấy CreationDate, pid)
+function Get-InstanceProcess {
+  param([string]$cid)
+  $procs = Get-CimInstance Win32_Process -Filter "Name='qnyh.exe'" -ErrorAction SilentlyContinue
+  foreach ($p in $procs) {
+    if ($p.CommandLine -and (($p.CommandLine -split '\s+') -contains "-instance:$cid")) { return $p }
+  }
+  return $null
+}
+
+# Đã THỰC SỰ kết nối vào game chưa? (loại trừ process zombie)
+# process sống VÀ (TCP established đến cổng game world 30000/30001 HOẶC title cửa sổ chứa 'Server [')
+function Test-InstanceConnected {
+  param([string]$cid, [int[]]$gamePorts = @(30000, 30001))
+  $p = Get-InstanceProcess $cid
+  if (-not $p) { return $false }
+  try { $title = (Get-Process -Id $p.ProcessId -ErrorAction SilentlyContinue).MainWindowTitle } catch { $title = '' }
+  if ($title -and $title -like '*Server *') { return $true }
+  try {
+    $conns = Get-NetTCPConnection -OwningProcess $p.ProcessId -ErrorAction SilentlyContinue |
+      Where-Object { $_.State -eq 'Established' -and $gamePorts -contains $_.RemotePort }
+    if ($conns) { return $true }
+  } catch { }
+  return $false
+}
+
+Export-ModuleMember -Function ConvertFrom-ScrList, Get-ClientPolicy, Get-NowInTz, Get-ScheduleWindows, Get-DesiredState, Merge-MasterRuntime, Resolve-KeyToClient, Test-MasterModel, Get-InstanceProcess, Test-InstanceConnected
