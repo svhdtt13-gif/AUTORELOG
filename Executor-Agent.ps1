@@ -1,6 +1,6 @@
 param(
   [string]$MasterPath = (Join-Path $PSScriptRoot 'clients_master.json'),
-  [string]$ScenePath  = 'C:\Users\ADMIN\Desktop\MIUUUUUUUUUUUU.json',
+  [string]$ScenePath  = 'C:\Users\ADMIN\Desktop\MIUUUUUUUUUU.json',
   [switch]$Apply
 )
 $ErrorActionPreference = 'Stop'
@@ -84,9 +84,25 @@ if (Test-Path $OverridePath) {
   } catch { $overrides = @{} }
 }
 
+# Zombie recovery: process sống nhưng chưa kết nối game
+$zr = @{}
+$zrPath = Join-Path $PSScriptRoot 'zombie_restart.json'
+if (Test-Path $zrPath) {
+  try {
+    $zj = Get-Content $zrPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    foreach ($k in $zj.PSObject.Properties) {
+      $v = $k.Value
+      $zr[$k.Name] = [ordered]@{ last = [datetime]::Parse([string]$v.last); attempts = [int]$v.attempts; broken = [bool]$v.broken }
+    }
+  } catch { $zr = @{} }
+}
+$zombieCooldownMin = 15
+$zombieMaxAttempts = 3
+$graceSec = 120
+
 Write-Host ("Now (Asia/Ho_Chi_Minh): {0:HH:mm}  Apply={1}" -f $now, $Apply)
 Log ("RUN Apply=$Apply Now={0:HH:mm} TZ=Asia/Ho_Chi_Minh" -f $now)
-$cStart = 0; $cStop = 0; $cNone = 0; $cSkip = 0; $cCrash = 0; $cFail = 0
+$cStart = 0; $cStop = 0; $cNone = 0; $cSkip = 0; $cCrash = 0; $cFail = 0; $cZombie = 0
 $newRunning = @{}
 
 $actions = @()
@@ -96,13 +112,26 @@ foreach ($c in @($master.clients)) {
   if ($overrides.ContainsKey($cid) -and $now -lt $overrides[$cid].until) { $desired = $overrides[$cid].action }
   $runningPid = Test-InstanceRunning $cid
   $running = ($null -ne $runningPid)
+  $connected = if ($running) { Test-InstanceConnected $cid } else { $false }
+  if ($connected -and $zr.ContainsKey($cid)) { $zr.Remove($cid) }
   $act = 'NONE'; $event = 'OK'
-  switch ($desired) {
-    'running' { if (-not $running) { $act = 'START' } }
-    'stopped' { if ($running) { $act = 'STOP' } }
-    'blocked' { if ($running) { $act = 'STOP' } }
-    default   { $act = 'NONE' }
-  }
+   switch ($desired) {
+     'running' {
+       if (-not $running) { $act = 'START' }
+       elseif (-not $connected) {
+         $pObj = Get-InstanceProcess $cid
+         $age = 99999
+         if ($pObj -and $pObj.CreationDate) {
+           try { $born = [System.Management.ManagementDateTimeConverter]::ToDateTime($pObj.CreationDate); $age = (Get-Date).Subtract($born).TotalSeconds } catch { }
+         }
+         if ($age -ge $graceSec) { $act = 'ZOMBIE_RESTART' }
+       }
+     }
+     'stopped' { if ($running) { $act = 'STOP' } }
+     'blocked' { if ($running) { $act = 'STOP' } }
+     default   { $act = 'NONE' }
+   }
+   if ($act -eq 'ZOMBIE_RESTART') { $event = 'ZOMBIE' }
   if ($act -eq 'START') {
     if (-not $launch.ContainsKey($cid)) {
       Write-Host ("  [WARN] $cid desired=running but no launch cmd in scene -> SKIP")
@@ -118,9 +147,9 @@ foreach ($c in @($master.clients)) {
   }
 
   if ($act -eq 'START' -and -not $launch.ContainsKey($cid)) { $cSkip++ }
-  else {
-    switch ($act) { 'START' { $cStart++ } 'STOP' { $cStop++ } 'NONE' { $cNone++ } }
-  }
+   else {
+     switch ($act) { 'START' { $cStart++ } 'STOP' { $cStop++ } 'NONE' { $cNone++ } 'ZOMBIE_RESTART' { $cZombie++ } }
+   }
 
   if ($Apply) {
     if ($act -eq 'START') {
@@ -128,8 +157,34 @@ foreach ($c in @($master.clients)) {
       catch { Write-Host "    START FAIL $cid : $_"; Log "START FAIL $cid : $_"; $cFail++; Alert ("Client $cid ($($c.name)) KHONG the bat lai: $_") }
     }
     elseif ($act -eq 'STOP') { try { Stop-Instance $runningPid; Write-Host "    STOPPED $cid (pid $runningPid)"; Log "STOPPED $cid pid=$runningPid" } catch { Write-Host "    STOP FAIL $cid : $_"; Log "STOP FAIL $cid : $_" } }
+    elseif ($act -eq 'ZOMBIE_RESTART') {
+      $entry = $zr[$cid]
+      $do = $true; $giveup = $false
+      if ($entry) {
+        if ($entry.broken) { $do = $false }
+        elseif ((Get-Date).Subtract($entry.last).TotalMinutes -lt $zombieCooldownMin) { $do = $false }
+        elseif ($entry.attempts -ge $zombieMaxAttempts) {
+          $do = $false; $giveup = $true
+          $entry.broken = $true
+          Alert ("Client $cid ($($c.name)) zombie lien tuc (khong ket noi game) sau $zombieMaxAttempts lan restart -> dung tu dong, can kiem tra tai khoan/scene cua client nay")
+        }
+      }
+      if ($do) {
+        try {
+          if ($runningPid) { Stop-Instance $runningPid }
+          Start-Instance $launch[$cid]
+          $att = if ($entry) { $entry.attempts + 1 } else { 1 }
+          $zr[$cid] = [ordered]@{ last = Get-Date; attempts = $att; broken = $false }
+          Write-Host "    ZOMBIE-RESTART $cid (attempt $att)"; Log "ZOMBIE-RESTART $cid attempt=$att"
+          Alert ("Client $cid ($($c.name)) zombie (process song nhung chua ket noi game) - da tu dong khoi dong lai (lan $att)")
+        } catch { Write-Host "    ZOMBIE-RESTART FAIL $cid : $_"; Log "ZOMBIE-RESTART FAIL $cid : $_"; $cFail++; Alert ("Client $cid ($($c.name)) zombie nhung KHONG the restart: $_") }
+      } else {
+        if (-not $giveup) { Write-Host "    ZOMBIE $cid (cooldown, skip restart)"; Log "ZOMBIE $cid cooldown skip" }
+      }
+    }
   } else {
     if ($event -eq 'CRASH') { Alert ("[DRYRUN] Client $cid ($($c.name)) dang tat ngoai y muon (se bat lai khi -Apply)") }
+    elseif ($act -eq 'ZOMBIE_RESTART') { Alert ("[DRYRUN] Client $cid ($($c.name)) zombie (process song nhung chua ket noi game) - se restart khi -Apply") }
   }
 
   # expected next-running state
@@ -140,5 +195,9 @@ foreach ($c in @($master.clients)) {
 # Persist state
 [ordered]@{ ts = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'); running = $newRunning } | ConvertTo-Json -Compress | Set-Content $StatePath -Encoding UTF8
 
-Log ("SUMMARY start=$cStart stop=$cStop none=$cNone skip=$cSkip crash=$cCrash fail=$cFail Apply=$Apply")
+# Persist zombie recovery state
+if ($zr.Count -eq 0) { if (Test-Path $zrPath) { Remove-Item $zrPath -Force } }
+else { $zr | ConvertTo-Json | Set-Content $zrPath -Encoding UTF8 }
+
+Log ("SUMMARY start=$cStart stop=$cStop none=$cNone skip=$cSkip crash=$cCrash fail=$cFail zombie=$cZombie Apply=$Apply")
 if (-not $Apply) { Write-Host "`nDRY-RUN: nothing changed. Re-run with -Apply to actually start/stop instances." }
