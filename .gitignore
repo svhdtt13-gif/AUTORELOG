@@ -1,6 +1,7 @@
 # Secrets / credentials (NEVER commit)
 ngrok.txt
 config.json
+remote.txt
 *.exe
 
 # Runtime logs & cache
