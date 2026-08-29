@@ -1,8 +1,14 @@
 param(
-  [int]$Port = 8080,
+  [int]$Port = 0,
   [switch]$Ngrok,
   [switch]$NoAuth
 )
+if ($Port -le 0) {
+  $l = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, 0)
+  $l.Start()
+  $Port = ($l.LocalEndpoint).Port
+  $l.Stop()
+}
 $ErrorActionPreference = 'Stop'
 $ScriptDir = Split-Path $MyInvocation.MyCommand.Path -Parent
 $web = Join-Path $ScriptDir 'Web-MasterData.ps1'
