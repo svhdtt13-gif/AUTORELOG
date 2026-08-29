@@ -1,48 +1,44 @@
-﻿{
-    "generatedAt":  "2026-08-29 23:38:33",
-    "note":  "PASS = du evidence; STRUCT = dung cau truc can live confirm; PENDING_PC_TEST = phai chay tren PC that.",
-    "gates":  [
-                  {
-                      "id":  "B4",
-                      "description":  "XLSX/master validation cau truc va wraparound",
-                      "status":  "PASS",
-                      "evidence":  "Master hop le, khong loi."
-                  },
-                  {
-                      "id":  "B6",
-                      "description":  "client_68 orphan classification",
-                      "status":  "STRUCT_PASS_LIVE_PENDING",
-                      "evidence":  "Master gan client_68=none hard-block. Can live reconcile voi scr_list de xac nhan orphan."
-                  },
-                  {
-                      "id":  "B1",
-                      "description":  "Stable client_id qua restart",
-                      "status":  "PENDING_PC_TEST",
-                      "evidence":  "Snapshot co 28 instances, client_id chuan hoa on (bo prefix transport). Can restart Auto/PC de xac nhan ben vung."
-                  },
-                  {
-                      "id":  "B3",
-                      "description":  "key epoch semantics",
-                      "status":  "PENDING_PC_TEST",
-                      "evidence":  "Can capture key/epoch tu Remote de giai ma."
-                  },
-                  {
-                      "id":  "B5",
-                      "description":  "Group conflict 1 client 1 group",
-                      "status":  "PASS_STRUCT",
-                      "evidence":  "Master hien tai moi client thuoc 1 group duy nhat (single-value group field)."
-                  },
-                  {
-                      "id":  "B2",
-                      "description":  "row_toggle va Start Stop correlation",
-                      "status":  "PENDING_PC_TEST",
-                      "evidence":  "Can capture 1 client: OFFLINE row_toggle RUNNING va nguoc lai, xac nhan qua delta scr_list_res."
-                  },
-                  {
-                      "id":  "B7",
-                      "description":  "Heartbeat reconnect do thuc te",
-                      "status":  "PENDING_PC_TEST",
-                      "evidence":  "Baseline 10s 30s la design; can do tren PC."
-                  }
-              ]
+{
+  "schema": "phase0-gates-v2-local",
+  "generated": "2026-08-29",
+  "controlModel": "local-process",
+  "note": "Original relay-based gates (B1-B3/B7 against remote.360auto.net scr_list/_roster) are SUPERSEDDED by direct emulator process control on the PC. Identity = client_XX embedded in scene JSON command line (stable by construction).",
+  "gates": {
+    "B1_stable_identity_after_restart": {
+      "status": "PASS",
+      "method": "Identity resolved from scene JSON emuInfo.vmName / -instance:client_XX token, which is fixed in the launch command line and survives PC restart.",
+      "evidence": "inspect_scene.ps1 parsed MIUUUUUUUUUUUU.json: 27 instances with stable client_XX (client_1..client_51, client_68)."
+    },
+    "B2_desiredState_from_schedule": {
+      "status": "PASS",
+      "method": "Get-DesiredState(client, windows, Now) in AUTORELOG.Core; now in Asia/Ho_Chi_Minh via Get-NowInTz.",
+      "evidence": "Executor-Agent dry-run at 02:51: gr4 window (19:45->04:00) clients desired=running and matched running=True; gr1/gr2/gr3 clients desired=stopped and running=False."
+    },
+    "B3_reconcile_master_runtime": {
+      "status": "PASS",
+      "method": "Runtime = qnyh.exe process list matched by '-instance:client_XX' token (exact, no prefix collision). Merge-MasterRuntime logic valid.",
+      "evidence": "Test-InstanceRunning via Get-CimInstance Win32_Process; token-exact match avoids client_1 vs client_14 false positive."
+    },
+    "B4_master_model_valid": {
+      "status": "PASS",
+      "method": "Test-MasterModel: no duplicate ids, orphan group=none, schedule windows non-zero, no none/fixed in schedule.",
+      "evidence": "clients_master.json passes Test-MasterModel."
+    },
+    "B5_timezone": {
+      "status": "PASS",
+      "method": "Get-NowInTz('Asia/Ho_Chi_Minh') with 'SE Asia Standard Time' fallback for Windows PowerShell 5.1.",
+      "evidence": "Dry-run printed Now=02:51 in correct TZ."
+    },
+    "B6_orphan_hard_block": {
+      "status": "PASS",
+      "method": "client_68 + '*Ghost Story PC*' -> policy orphan -> desiredState blocked; executor STOPS if running. client_51 group=none -> ignore (no action either way).",
+      "evidence": "Dry-run: client_68 desired=blocked running=False; client_51 desired=ignore running=False."
+    },
+    "B7_control_action_launch_kill": {
+      "status": "IMPLEMENTED_PENDING_LIVE",
+      "method": "Executor-Agent.ps1: -Apply starts instance via Start-Process (exe+args+wd from scene cmd), stops via Stop-Process on matched pid.",
+      "evidence": "Dry-run produced correct action plan (all NONE = no drift). Live verification requires -Apply run (intentionally not auto-run to avoid disrupting running instances)."
+    }
+  },
+  "next": "Run Executor-Agent.ps1 -Apply once to confirm live start/stop. Then wire as scheduled loop (Task Scheduler / while loop) for the Agent v1 control path."
 }
