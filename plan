@@ -1,242 +1,113 @@
 # KẾ HOẠCH TRIỂN KHAI v4 — AUTORELOG / AutoGhostStory Client Manager
 
-Review date: 2026-08-29
-
 ## 0. Mục tiêu
 
-Xây hệ thống quản lý client Auto Ghost Story trên PC gồm Agent + Web Dashboard + Scheduler, tập trung vào discovery, trạng thái, đăng nhập/lifecycle, Start/Stop hàng loạt theo nhóm và lịch. Không triển khai 25 tính năng gameplay trong phạm vi này.
+Xây hệ thống quản lý client Auto Ghost Story trên PC gồm Agent + Web Dashboard + Scheduler, tập trung discovery, trạng thái, đăng nhập/lifecycle, Start/Stop hàng loạt theo nhóm và lịch. Không triển khai gameplay automation trong phạm vi này.
 
-## 1. Quyết định kiến trúc bắt buộc
+## 1. Nguyên tắc kiến trúc
 
-- Xác minh stable `client_id` qua restart Auto/PC trước khi dùng làm identity; tuyệt đối không dùng `rowIndex` làm key.
-- Chuẩn hóa lịch qua ngày bằng `endDayOffset` hoặc duration và validate lịch suy ra với master.
-- `fixed` = start-at-boot nếu offline, **không auto-stop**, trừ khi có explicit schedule override. Scheduler phải coi đây là policy cố định.
+- `clients_master.json` là canonical configuration.
+- Runtime state và control state tách khỏi master.
+- Không dùng `rowIndex` làm identity.
+- `desiredState` là computed/read-only từ scheduler.
+- Một client chỉ thuộc một scheduling group; conflict phải block.
+- `fixed` = start-at-boot nếu offline, không auto-stop trừ explicit schedule override.
 - `none` không chạy scheduler.
-- `client_68 / Ghost Story PC 0`, nếu xác nhận là artifact discovery, là `orphan/unknown`, chỉ cảnh báo và **không bao giờ được scheduler điều khiển**.
-- JSON là canonical; không tạo SQLite làm nguồn truth thứ hai trong giai đoạn này.
-- XLSX importer phải ghi kết quả đã normalize/validate trực tiếp vào `clients_master.json` canonical; không tạo master thứ hai.
-- Giữ nguyên `GET /api/master` để `db.html` hiện tại không bị phá; API mới mở rộng dần.
-- Một client chỉ thuộc một scheduling group; multi-group → `CONFIG_CONFLICT`, scheduler từ chối action.
-- Agent v1 phải có heartbeat + reconnect.
-- Không lưu/log credential game; Controller chỉ gửi intent và đọc state/result từ Auto.
-- `desiredState` là **computed/read-only**, được tính từ scheduler mỗi tick; user không set trực tiếp.
-- Giữ `AutoCycle` hiện tại chạy ổn định cho tới khi Phase 0 hoàn tất và có kế hoạch switch không downtime; không thay thế hệ đang chạy giữa chừng.
+- `orphan/unknown` chỉ cảnh báo và hard-block scheduler.
+- `AutoCycle` hiện tại tiếp tục hoạt động cho tới khi migration/switch được kiểm thử và có rollback.
+- Không lưu credential game; HAR/session/token phải scrub trước chia sẻ/repo/log.
 
-## 2. Baseline hiện tại
+## 2. Phase 0 — Discovery / Validation
 
-Tái sử dụng: `db.html`, `serve.ps1`, `sync_master.ps1`, `AutoCycle.ps1`, `clients_master.json`, `clients_master.csv`, `lich trinh tat mo.xlsx`.
+### Đã hoàn thành từ HAR
 
-`clients_master.json` là nguồn canonical. Runtime state/cache/event history tách khỏi master. Không tự ghi runtime vào master nếu không phải thay đổi cấu hình đã được xác nhận.
+- Discovery `scr_list/scr_list_res`.
+- Runtime snapshot/delta.
+- `act_result` ACK.
+- `row_toggle` được xác định là client-level action candidate.
+- Phân biệt product-level control và client-level control.
+- Bulk action có thể phát theo từng client.
 
-## 3. Dữ liệu Auto Ghost Story đã xác định
+### Còn phải PASS trên PC thật
 
-`product_id=73`. Một machine/room/app có nhiều client/instance.
+1. Stable client identity.
+2. Mapping master ↔ runtime.
+3. Xác minh `fixed/none/orphan`.
+4. Group conflict.
+5. Capture và correlation Start/Stop thực tế.
+6. Xác minh `key` semantics.
+7. Xác minh `epoch` semantics.
+8. Đo heartbeat/reconnect thực tế.
 
-`scr_list/scr_list_res` cung cấp `client id`, `name`, `state`, `cap`, `capAge`. Runtime có `running/offline`; UI có lifecycle như `OFFLINE`, `Mất kết nối`, `Đang kết nối`, `Đang chuẩn bị`, `Đang khởi tạo`, `Chờ load game`, `Đang load game`, `Đăng nhập thành công`, `Đang hoạt động`, `Đang chờ`, `Tạm dừng`.
+## 3. Phương hướng xử lý tiếp theo — ưu tiên sau Phase 0 HAR Discovery
 
-`checked` chỉ là selection, không phải running state. Snapshot/delta, `row_toggle`, menu client/toàn bộ, login/relogin và bulk actions đã được quan sát.
+### B1 — Chốt Stable Client ID trước mọi control
 
-Không suy đoán menu path thành Start/Stop/Login nếu chưa capture action thực tế.
-
-## 4. Phase 0 — Discovery / Validation — BLOCKER
-
-### B1. Stable ID
-
-Lấy `scr_list_res` trên PC thật → restart Auto → lấy lại → restart PC nếu có thể → so sánh `client_XX` với name/machine/room. Nếu ID bền, dùng làm primary identity. Nếu không bền, xây mapping identity đã xác minh. Identity mismatch phải chặn automation client đó.
-
-### B2. Lịch và master
-
-Import `lich trinh tat mo.xlsx`, normalize rồi ghi vào `clients_master.json` sau khi validation pass. Ví dụ:
-
-```json
-{"start":"19:45","end":"12:30","endDayOffset":1}
-```
-
-Validator: overlap, duplicate, group/client không tồn tại, end trước start thiếu offset, lịch invalid. Fail validation thì không activate và không làm mất master/schedule hợp lệ hiện tại.
-
-### B3. fixed / none / orphan
-
-`fixed`: start-at-boot nếu offline; không auto-stop; chỉ explicit schedule override mới được phép stop.
-
-`none`: không chạy scheduler.
-
-`client_68` nếu xác nhận artifact → `orphan/unknown`, chỉ hiển thị cảnh báo; scheduler hard-block mọi Start/Stop.
-
-### B4. Group conflict
-
-Một client chỉ một scheduling group. Multi-group → `CONFIG_CONFLICT`, action bị từ chối và audit.
-
-### B5. Capture Start/Stop — cách thực hiện cụ thể
-
-Dùng **một client test duy nhất** và thao tác menu thủ công trên Remote/Auto. Tái sử dụng các trigger hiện có như `ClickStop*`/`ToggleRow*` nếu chúng là trigger quan sát được.
-
-Mỗi test phải ghi:
-
-1. timestamp;
-2. client identity (`client_id`, name, machine, room);
-3. snapshot `scr_list` trước thao tác;
-4. thao tác menu chính xác đã bấm;
-5. WebSocket/request tương ứng nếu capture được;
-6. response/ack (`act_result` hoặc tương đương);
-7. mọi `delta` sau thao tác;
-8. snapshot `scr_list` sau transition;
-9. state transition đầy đủ;
-10. xác nhận idempotency bằng cách lặp lại khi đã ở desired state.
-
-Capture riêng **Start** và **Stop**, không chạy đồng thời. Không đưa cookie/session/token/password vào artifact; HAR chỉ lưu local và phải scrub auth trước mọi chia sẻ/log/repo.
-
-### B6. Heartbeat/reconnect baseline
-
-Chốt constants Agent v1:
+Trên chính PC:
 
 ```text
-heartbeat interval = 10s
-heartbeat timeout  = 30s
-reconnect = exponential backoff
+capture scr_list
+  ↓
+client_id + name + idx + key + machine + room
+  ↓
+restart Auto Ghost Story
+  ↓
+capture lại
+  ↓
+restart PC nếu có thể
+  ↓
+capture lại
+  ↓
+so sánh
 ```
 
-Khi reconnect: lấy snapshot mới trước khi xử lý queue; khi unhealthy không phát action mới.
+Phân loại identity: `STABLE`, `REGENERATED`, `CONDITIONAL`, `UNKNOWN`.
 
-### Deliverables Phase 0
+Nếu `client_id` không stable, không dùng riêng nó làm database key; xây mapping identity đã xác minh.
 
-- stable-ID test/report;
-- master ↔ runtime mapping;
-- XLSX → normalized master JSON validation;
-- fixed/none/orphan classification;
-- group conflict report;
-- Start/Stop protocol capture;
-- heartbeat/reconnect constants;
-- transition plan bảo đảm AutoCycle hiện tại tiếp tục hoạt động.
+### B2 — Xác minh `row_toggle` và Start/Stop bằng correlation runtime
 
-## 5. Canonical data model
-
-```json
-{
-  "id":"client_14",
-  "machineId":"...",
-  "roomId":"...",
-  "productId":73,
-  "name":"XuyếnChiXàoTỏi",
-  "rowIndex":0,
-  "groupId":"gr1",
-  "policy":"scheduled",
-  "enabled":true,
-  "selected":false,
-  "runtimeState":"running",
-  "uiState":"Đang hoạt động",
-  "loginState":"logged_in",
-  "capability":"ok",
-  "capabilityAge":0,
-  "lastSeen":"...",
-  "desiredState":"running",
-  "lastAction":"start",
-  "lastError":null,
-  "identityVerified":false,
-  "orphan":false
-}
-```
-
-`desiredState` là computed/read-only; không phải user setting.
-
-`selected`, `desiredState`, `runtimeState`, `uiState`, `loginState`, `enabled` độc lập.
-
-Group:
-
-```json
-{"id":"gr1","name":"Group 1","clientIds":["client_14","client_15"],"enabled":true,"schedulerEnabled":true,"timezone":"Asia/Ho_Chi_Minh"}
-```
-
-Schedule:
-
-```json
-{"id":"SCH001","groupId":"gr1","action":"start","start":"08:00","end":"04:00","endDayOffset":1,"days":[1,2,3,4,5,6,7],"enabled":true,"staggerSeconds":30,"maxParallel":2,"retry":2,"retryDelaySeconds":60,"gracePeriodSeconds":120}
-```
-
-Scheduler v1 không coi login/logout là action độc lập; login/relogin là lifecycle của Start cho tới khi protocol thực tế chứng minh khác.
-
-## 6. Phase 1 — Agent v1
-
-Agent trên PC: discovery Auto/room/client; đọc `scr_list`; runtime registry; snapshot/delta nếu được phép; heartbeat 10s; timeout 30s; reconnect; mapping master; phân loại known/new/offline/orphan/identity_mismatch; nhận intent Start/Stop; xác nhận bằng state thật.
-
-Reconnect: exponential backoff; không gửi lệnh khi unhealthy; reconnect xong lấy snapshot mới trước khi xử lý queue.
-
-Không log password/token/session. Web không nhận credential game.
-
-## 7. Phase 2 — Registry + Master Sync
+Dùng một client test duy nhất. Không chạy bulk trong test đầu tiên.
 
 ```text
-Runtime discovery → identity match → known/new/orphan/mismatch → master validation → runtime registry
+OFFLINE
+  ↓ row_toggle / action thực tế
+ACK / act_result
+  ↓
+delta + scr_list_res
+  ↓
+RUNNING?
 ```
 
-Không tự đổi group. Client mới không tự chạy lịch. Client mất không xóa master; giữ `lastSeen`. Identity mismatch và orphan chặn automation.
-
-## 8. Phase 3 — Scheduler
-
-Start/Stop group và bulk nhiều group nếu không conflict.
-
-Rules: không Start khi đã running/active; không Stop khi offline/stopped; chờ/xác nhận transition; không phát lệnh đối nghịch khi connecting/loading/login; stagger; maxParallel; retry hữu hạn; per-client lock; requestId/idempotency; timeout/grace; audit; Agent mất kết nối → pause action.
-
-`desiredState` được tính từ active schedule/policy ở mỗi tick.
-
-State machine:
+Sau đó đảo chiều:
 
 ```text
-OFFLINE → START_REQUESTED → CONNECTING → PREPARING → INITIALIZING → LOADING_GAME → LOGIN/RELOGIN → RUNNING
-RUNNING → STOP_REQUESTED → STOPPING/PAUSING → OFFLINE
+RUNNING
+  ↓ row_toggle / action thực tế
+ACK / act_result
+  ↓
+delta + scr_list_res
+  ↓
+OFFLINE?
 ```
 
-`LOGIN_FAILED`/`RELOGIN_REQUIRED` không phải RUNNING.
+Phải lưu: timestamp, client identity, state trước, trigger chính xác, request/response nếu capture được, ACK, delta, state sau và idempotency khi lặp lại ở desired state.
 
-## 9. Phase 4 — Web Dashboard
+**Không coi `act_result.ok` là bằng chứng thành công nếu runtime chưa transition.**
 
-Dashboard: tổng client, running/offline, connecting/loading/login, lỗi, group, scheduler, next action, Agent heartbeat.
+### B3 — Giải mã `key` và `epoch`
 
-Client table:
+Capture tối thiểu 5–10 client:
 
 ```text
-Chọn | Client | Group | Policy | Runtime | UI Status | Login | Capability | Last Seen | Desired | Action
+client_id | idx | key | epoch | state
 ```
 
-`Desired` chỉ hiển thị computed state, không có ô nhập trực tiếp.
+Lặp lại sau restart Auto và nếu có thể restart PC. Xác định `key` là identity, session key hay giá trị tạm; xác định `epoch` thuộc snapshot/session/client và quy luật tăng/đổi.
 
-Filter group/state/login/capability/error/policy. Bulk preview: số client sẽ Start/Stop, conflict, orphan, offline, already-running.
+Chỉ đưa trường vào identity/runtime model sau khi semantics được chứng minh.
 
-Groups: CRUD, assign client, chống multi-group, enable/disable scheduler, xem lịch.
-
-Scheduler: calendar/list, lịch qua ngày, stagger, maxParallel, retry.
-
-Audit:
-
-```text
-time | actor | target | action | desired | old | new | result | error
-```
-
-## 10. API mở rộng
-
-Giữ `GET /api/master` tương thích.
-
-```text
-GET  /api/clients
-GET  /api/clients/:id
-GET  /api/groups
-GET  /api/schedules
-GET  /api/events
-GET  /api/health
-POST /api/clients/:id/start
-POST /api/clients/:id/stop
-POST /api/clients/bulk-action
-POST /api/groups
-PUT  /api/groups/:id
-DELETE /api/groups/:id
-POST /api/schedules
-PUT  /api/schedules/:id
-DELETE /api/schedules/:id
-POST /api/schedules/:id/run-now
-```
-
-Chỉ thêm login/logout khi protocol thực tế được chứng minh.
-
-## 11. Import/export lịch
+### B4 — XLSX → canonical master JSON
 
 ```text
 lich trinh tat mo.xlsx
@@ -245,91 +116,192 @@ parse
         ↓
 normalize
         ↓
-validate wraparound/conflict
+validate
         ↓
-write clients_master.json
+clients_master.json
         ↓
 review
         ↓
 activate
 ```
 
-Không activate khi validation fail; master/schedule hợp lệ cũ phải được giữ nguyên.
+Validator phải bắt client không tồn tại, duplicate, multi-group, overlap, lịch qua ngày, `fixed`, `none`, orphan. Nếu fail, không ghi đè cấu hình hợp lệ hiện tại.
 
-## 12. Non-breaking transition
+### B5 — Group conflict
 
-`AutoCycle` hiện tại tiếp tục chạy trên master hiện tại cho tới khi Phase 0 hoàn tất.
-
-Không đổi production scheduler giữa chừng. Khi Phase 0 pass, tạo migration/switch plan có rollback, test read-only trước, sau đó mới bật control path mới.
-
-## 13. Safety / Recovery
-
-Per-client lock; scheduler global pause; Emergency Stop ở Agent; không gửi lệnh mù khi mất kết nối; retry giới hạn; không credential trong audit; không commit token/session/HAR; HAR local-only + auth scrub; bulk preview; validate config.
-
-Orphan/unknown hard-block mọi scheduler action.
-
-## 14. Test plan
-
-Identity: restart Auto, restart PC, verify ID/name/machine/room.
-
-State: Offline→Start→Running; Running→Stop→Offline; login/relogin; network loss→reconnect.
-
-Scheduler: Start/Stop group, overnight, stagger, maxParallel, retry, duplicate, conflict, fixed/none exclusion.
-
-Fixed: offline at boot → start; running → scheduler không auto-stop nếu không có explicit override.
-
-Orphan: `client_68` nếu xác nhận orphan → scheduler Start/Stop đều bị từ chối; không có action nào được phát xuống Agent.
-
-Desired: user không thể set trực tiếp; thay đổi schedule làm computed desired thay đổi ở tick tiếp theo.
-
-Recovery: Agent restart, Auto restart, web restart, ngrok/network interruption, state reconciliation.
-
-Compatibility: `GET /api/master` và AutoCycle hiện tại vẫn hoạt động trước/sau migration.
-
-Security: HAR auth scrub; không credential trong logs/audit/repo.
-
-## 15. Thứ tự code
+Xuất báo cáo:
 
 ```text
-0 Discovery + stable-ID + Start/Stop capture + heartbeat constants
-1 Master validator + XLSX importer → clients_master.json
-2 Agent heartbeat/reconnect + runtime registry
-3 Read-only API + db.html status
-4 Verified single-client Start/Stop
-5 Group scheduler
-6 Bulk scheduler + stagger/maxParallel
-7 Audit/error dashboard
-8 Migration/switch + hardening + recovery tests
+client_id → group hiện tại → schedule → conflict?
 ```
 
-Mỗi phase có test + commit riêng; không code toàn bộ một lần.
+Quy tắc: `1 client → tối đa 1 scheduler group`. Conflict → `CONFIG_CONFLICT` → scheduler BLOCK → audit.
 
-## 16. Acceptance criteria
+### B6 — Xác nhận `client_68`
 
-- Stable identity đã xác minh.
-- Runtime/login/UI state chính xác.
-- `checked` không bị coi là running.
-- Không dùng rowIndex làm key.
-- Lịch import/qua ngày đúng và ghi về canonical JSON.
-- fixed/none/orphan không bị scheduler tự ý điều khiển ngoài policy đã định nghĩa.
-- `client_68` orphan hard-block nếu xác nhận.
-- Không multi-group conflict.
-- Start/Stop xác nhận bằng runtime state và protocol đã capture.
-- Group scheduler có stagger/maxParallel/retry.
-- Heartbeat 10s / timeout 30s và reconnect hoạt động.
-- `/api/master` tương thích.
-- AutoCycle không bị gián đoạn trước migration.
-- Mọi action audit.
-- Không credential trong web/log/repo/HAR chia sẻ.
-
-## 17. Trạng thái
-
-**PLAN v4 — chờ approval Phase 0.** Chưa triển khai code điều khiển Auto. Chỉ sau khi stable ID và Start/Stop protocol được xác minh mới bật control path.
-
-## 18. Quy trình review
+Đối chiếu `clients_master` ↔ `scr_list_res` ↔ runtime. Nếu không có mapping hợp lệ:
 
 ```text
-phản hồi mới → đọc/đối chiếu plan → cập nhật blocker/decision → commit plan → approval → code phase tương ứng
+ORPHAN
+ ↓
+VISIBLE + WARNING
+ ↓
+NO SCHEDULER / NO START / NO STOP
 ```
 
-Nguồn review: `phản hồi` SHA `2b33ce2f8846a182262737eee43060ab987ce701`, review dựa trên `plan` SHA `8112cfc6129df0ea98a94f4bfb097bf6b4e94ee4`.
+Phải có test tự động bảo đảm orphan không bao giờ nhận control intent.
+
+### B7 — Heartbeat/reconnect thực tế
+
+Baseline hiện tại:
+
+```text
+heartbeat interval = 10s
+heartbeat timeout  = 30s
+reconnect = exponential backoff
+```
+
+Đây là baseline thiết kế, **chưa phải số đo runtime**. Đo trên PC và điều chỉnh nếu evidence yêu cầu. Khi reconnect phải lấy snapshot mới trước khi xử lý queue; khi unhealthy không phát action mới.
+
+## 4. Mô hình 3 lớp
+
+```text
+MASTER
+client_id / name / group / policy / schedule
+        ↓
+RUNTIME
+client_id / state / loginState / capability / lastSeen
+        ↓
+CONTROL
+computed desiredState / requestId / action / result
+```
+
+Không trộn cấu hình, trạng thái và ý định điều khiển.
+
+## 5. Sau khi các Phase 0 gates PASS — Agent v1
+
+```text
+Web Dashboard
+      ↓
+Controller / Scheduler
+      ↓ intent
+Agent
+ ├─ discovery
+ ├─ runtime registry
+ ├─ heartbeat
+ └─ reconnect
+      ↓
+Auto Ghost Story
+```
+
+Agent không điều khiển bằng click UI/menu script nếu protocol client-level đã được chứng minh. Agent dùng protocol đã capture/validate; UI/Remote là nguồn correlation và quan sát.
+
+API tối thiểu sau khi protocol được xác minh:
+
+```text
+get_clients()
+get_state(client_id)
+start(client_id)
+stop(client_id)
+```
+
+Chỉ thêm login/logout riêng nếu discovery chứng minh đó là action độc lập.
+
+## 6. Scheduler sau Agent
+
+Scheduler tính `desiredState` mỗi tick:
+
+```text
+schedule/policy
+      ↓
+computed desiredState
+      ↓
+compare runtimeState
+      ↓
+need action?
+```
+
+Ví dụ:
+
+```text
+desired=running + runtime=offline → START
+desired=stopped + runtime=running → STOP
+desired=running + runtime=running → NO ACTION
+```
+
+Có per-client lock, requestId/idempotency, timeout/grace, stagger, maxParallel, retry hữu hạn, audit và pause khi Agent unhealthy.
+
+## 7. Thứ tự triển khai
+
+```text
+NOW
+ │
+ ├─ B1 Stable ID
+ ├─ B2 row_toggle + Start/Stop correlation
+ ├─ B3 key / epoch
+ ├─ B4 XLSX → master JSON
+ ├─ B5 group conflict
+ └─ B6 client_68 orphan
+ │
+ ▼
+PHASE 0 PASS
+ │
+ ▼
+Agent v1
+ ├─ discovery
+ ├─ runtime registry
+ ├─ heartbeat
+ └─ reconnect
+ │
+ ▼
+Read-only Dashboard
+ │
+ ▼
+Single-client Control
+ │
+ ▼
+Group Scheduler
+ │
+▼
+Bulk Scheduler
+ │
+▼
+Migration khỏi AutoCycle
+```
+
+## 8. Gate chuyển phase
+
+Không chuyển sang production control nếu thiếu một trong các điều kiện:
+
+- Stable identity PASS.
+- Client-level Start/Stop PASS bằng runtime correlation.
+- `key`/`epoch` semantics đủ rõ.
+- XLSX/master validation PASS.
+- Group conflict PASS.
+- Orphan hard-block PASS.
+- Heartbeat/reconnect được kiểm tra.
+- AutoCycle vẫn hoạt động trong giai đoạn discovery.
+
+## 9. Trạng thái hiện tại
+
+**Phase 0 HAR Discovery: COMPLETED.**
+
+**Phase 0 PC Validation: PENDING.**
+
+Ưu tiên tiếp theo: **B1 Stable ID → B2 Start/Stop correlation trên 1 client → B3 key/epoch**. Không bật automation production trước khi các gate này PASS.
+
+## 10. Quy trình review
+
+```text
+phản hồi mới
+  ↓
+đối chiếu plan + evidence
+  ↓
+cập nhật blocker/decision
+  ↓
+commit plan
+  ↓
+PASS Phase 0
+  ↓
+code phase tương ứng
+```
