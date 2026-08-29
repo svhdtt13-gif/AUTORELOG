@@ -23,7 +23,10 @@ function Send-Notify {
       [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
       $uri = "https://api.telegram.org/bot$($cfg.telegram.token)/sendMessage"
       $body = @{ chat_id = [string]$cfg.telegram.chatId; text = $Message } | ConvertTo-Json -Compress
-      Invoke-RestMethod -Uri $uri -Method Post -ContentType 'application/json; charset=utf-8' -Body $body -TimeoutSec 10
+      $r = Invoke-RestMethod -Uri $uri -Method Post -ContentType 'application/json; charset=utf-8' -Body $body -TimeoutSec 10
+      if (-not $r.ok) {
+        Add-Content -Path (Join-Path $PSScriptRoot 'alerts.log') -Encoding UTF8 -Value (('{0:yyyy-MM-dd HH:mm:ss} ALERT telegram-fail {1}:{2}' -f (Get-Date), $r.error_code, $r.description))
+      }
     } catch {
       try { Add-Content -Path (Join-Path $PSScriptRoot 'alerts.log') -Encoding UTF8 -Value (('{0:yyyy-MM-dd HH:mm:ss} ALERT telegram-fail {1}' -f (Get-Date), $_)) } catch { }
     }
