@@ -7,12 +7,12 @@ $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'AUTORELOG.Ws.psm1') -Force
 
 if (-not (Test-Path (Join-Path $PSScriptRoot 'config.json'))) {
-  Write-Error "Thiếu config.json. Copy config.json.sample, điền token (gitignored)."
+  Write-Error "Missing config.json. Copy config.json.sample and fill token (gitignored)."
   exit 2
 }
 
 Write-Host "Recording RAW WS traffic -> $CapturePath"
-Write-Host "Dùng cho B1 (stable ID) + B7 (heartbeat/reconnect). Ctrl-C để dừng."
-Write-Host "Quy trình B1: để script chạy, restart Auto Ghost Story, (nếu được) restart PC, rồi Ctrl-C."
-Write-Host "Sau đó chạy:  powershell -File Analyze-Capture.ps1"
+Write-Host "For B1 (stable id) + B7 (heartbeat/reconnect). Ctrl-C to stop."
+Write-Host "B1: keep running, restart Auto Ghost Story (and PC), then Ctrl-C."
+Write-Host "Then run:  powershell -File Analyze-Capture.ps1"
 Start-WsCapture -ConfigPath $ConfigPath -CapturePath $CapturePath -MaxDurationSec $MaxDurationSec
