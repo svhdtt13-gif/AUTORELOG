@@ -4,6 +4,7 @@ config.json
 remote.txt
 notify.json
 overrides.json
+web.secret
 *.exe
 
 # Runtime logs & cache
