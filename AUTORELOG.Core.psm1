@@ -29,15 +29,41 @@ function ConvertFrom-ScrList {
   return $out
 }
 
+# Chuẩn hóa identity client từ object bất kỳ (master client / merged / registry)
+function script:Resolve-ClientId {
+  param($Client)
+  if ($Client.clientId) { return [string]$Client.clientId }
+  if ($Client.client)   { return [string]$Client.client }
+  if ($Client.id)       { return [string]$Client.id }
+  return $null
+}
+
 # Policy từ group (plan §16, dulieu §16)
+# Ưu tiên: field policy (nếu master có) -> client_68 / name 'Ghost Story PC*' -> group
 function Get-ClientPolicy {
   param($Client)
-  if ($Client.client -eq 'client_68') { return 'orphan' }
+  if ($null -ne $Client.policy -and [string]$Client.policy -ne '') { return [string]$Client.policy }
+  $cid  = script:Resolve-ClientId $Client
+  $name = [string]$Client.name
+  if ($cid -eq 'client_68' -or $name -like '*Ghost Story PC*') { return 'orphan' }
   switch ([string]$Client.group) {
     'fixed' { return 'fixed' }
     'none'  { return 'none' }
     default { return 'scheduled' }
   }
+}
+
+# Thời gian hiện tại theo timezone của group (plan feedback: Asia/Ho_Chi_Minh).
+# Windows dùng 'SE Asia Standard Time'; Linux/.NET Core dùng 'Asia/Ho_Chi_Minh'.
+function Get-NowInTz {
+  param([string]$TzId = 'Asia/Ho_Chi_Minh')
+  try {
+    $tz = [System.TimeZoneInfo]::FindSystemTimeZoneById($TzId)
+  } catch {
+    try { $tz = [System.TimeZoneInfo]::FindSystemTimeZoneById('SE Asia Standard Time') }
+    catch { return [System.DateTime]::Now }
+  }
+  return [System.TimeZoneInfo]::ConvertTime([System.DateTime]::UtcNow, $tz)
 }
 
 # Suy cửa sổ lịch từ schedule[] (open = time, close = group kế tiếp, wrap nếu cần)
@@ -61,14 +87,14 @@ function Get-ScheduleWindows {
   return $w
 }
 
-# Tính desiredState từ policy + cửa sổ lịch + thời gian hiện tại
+# Tính desiredState từ policy + cửa sổ lịch + thời gian hiện tại (theo timezone group)
 function Get-DesiredState {
-  param($Client, $Windows, $Now = (Get-Date))
+  param($Client, $Windows, $Now = (Get-NowInTz))
   $policy = Get-ClientPolicy $Client
   switch ($policy) {
     'fixed'    { return 'running' }   # always-on, không auto-stop
     'none'     { return 'ignore' }   # không nằm trong scheduler
-    'orphan'   { return 'blocked' }  # hard-block mọi control
+    'orphan'   { return 'blocked' }  # hard-block mọi control (plan B6)
     'scheduled' {
       $win = $Windows | Where-Object { $_.group -eq [string]$Client.group }
       if (-not $win) { return 'unknown' }
@@ -130,6 +156,18 @@ function Merge-MasterRuntime {
   return $result
 }
 
+# B3 — map key -> clientId qua snapshot (giả thuyết key = root/<sess>#<idx>).
+# KHÔNG hardcode key; luôn resolve qua idx của snapshot hiện tại.
+function Resolve-KeyToClient {
+  param([string]$Key, $Runtime)
+  if ($Key -match '#(\d+)$') {
+    $idx = [int]$Matches[1]
+    $hit = @($Runtime) | Where-Object { [int]$_.idx -eq $idx } | Select-Object -First 1
+    if ($hit) { return $hit.clientId }
+  }
+  return $null
+}
+
 # Validate master (plan §3 B4, dulieu §18/§19) - trả về report object
 function Test-MasterModel {
   param($Master)
@@ -150,8 +188,11 @@ function Test-MasterModel {
     $g = [string]$c.group
     if (-not $groupMembers.ContainsKey($g)) { $groupMembers[$g] = @() }
     $groupMembers[$g] += [string]$c.client
-    if ($c.client -eq 'client_68' -or [string]$c.name -like '*Ghost Story PC*') {
-      if ($g -ne 'none') { $rep.warnings.Add("ORPHAN candidate $($c.client) should be group=none") }
+    $pol = Get-ClientPolicy $c
+    # orphan: client_68 / 'Ghost Story PC*' PHẢI group=none
+    if ($pol -eq 'orphan') {
+      if ($g -ne 'none') { $rep.errors.Add("ORPHAN $($c.client) MUST be group=none (found '$g')") }
+      else { $rep.warnings.Add("ORPHAN $($c.client) group=none -> scheduler hard-block (correct)") }
     }
     if ($g -eq 'fixed' -and $null -ne $c.slot) { $rep.warnings.Add("fixed $($c.client) has slot set (ignored)") }
   }
@@ -188,4 +229,4 @@ function Test-MasterModel {
   return $rep
 }
 
-Export-ModuleMember -Function ConvertFrom-ScrList, Get-ClientPolicy, Get-ScheduleWindows, Get-DesiredState, Merge-MasterRuntime, Test-MasterModel
+Export-ModuleMember -Function ConvertFrom-ScrList, Get-ClientPolicy, Get-NowInTz, Get-ScheduleWindows, Get-DesiredState, Merge-MasterRuntime, Resolve-KeyToClient, Test-MasterModel
