@@ -12,6 +12,7 @@ cache/
 *.log
 lastrun.json
 runtime_*.json
+zombie_restart.json
 
 # Large binaries (>100MB)
 *.zip
