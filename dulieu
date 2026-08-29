@@ -1,1 +1,691 @@
+# DỮ LIỆU DISCOVERY — 360AUTO REMOTE / AUTO GHOST STORY
 
+> Tài liệu này là bản tổng hợp dữ liệu đã quan sát/đọc được trong quá trình Phase 0. Chỉ ghi những gì evidence hiện có hỗ trợ; phần chưa chứng minh được được đánh dấu `PENDING`/`UNKNOWN`. Không lưu cookie, session token, password hoặc credential.
+
+## 1. Phạm vi nguồn
+
+Nguồn đã sử dụng:
+
+- HAR của `remote.360auto.net` đã được phân tích trong Phase 0.
+- Client-side protocol/handler của 360Auto Remote được đọc từ HAR.
+- Dữ liệu/runtime Auto Ghost Story được đối chiếu theo mô hình Remote → tài khoản đồng bộ → Auto Ghost Story trên PC.
+- Repository `svhdtt13-gif/AUTORELOG` và các file master/plan/review hiện có.
+
+Không coi dữ liệu suy luận là dữ liệu runtime đã xác minh.
+
+## 2. Kiến trúc điều khiển quan sát được
+
+```text
+360Auto Remote
+      ↓
+account/session đồng bộ
+      ↓
+Auto Ghost Story trên PC
+      ↓
+client instances
+```
+
+Remote là lớp điều khiển/quan sát từ xa; thao tác cuối cùng được thực hiện trên Auto Ghost Story thông qua trạng thái đồng bộ của tài khoản.
+
+Do đó AUTORELOG phải phân biệt:
+
+```text
+Remote/UI action
+      ↓
+protocol message
+      ↓
+Auto Ghost Story runtime
+      ↓
+client state transition
+```
+
+Một ACK từ Remote không tự động chứng minh client đã chuyển trạng thái.
+
+## 3. Product/App layer
+
+Đã quan sát protocol ở tầng product/app có các action dạng:
+
+```text
+launch(product_id)
+stop(product_id, force:false)
+restart()
+```
+
+Auto Ghost Story được xác định với:
+
+```text
+product_id = 73
+```
+
+### Ý nghĩa thiết kế
+
+Các action trên phải được coi là **product/app-level** cho tới khi correlation runtime chứng minh chúng tác động đúng một client cụ thể.
+
+Không được dùng `launch(product_id=73)` hoặc `stop(product_id=73)` làm API Start/Stop từng client.
+
+## 4. Client discovery layer
+
+Remote có luồng discovery/refresh:
+
+```text
+scr_list
+   ↓
+scr_list_res
+   ↓
+instances[]
+```
+
+Dữ liệu client được xử lý gồm các trường/khái niệm đã quan sát:
+
+```text
+client.id
+idx
+name
+state
+cap
+capAge
+```
+
+Có xử lý snapshot và delta.
+
+`client_XX` được dùng trong dữ liệu/runtime hiện có như một dạng client identifier, nhưng **stable identity chưa được chứng minh sau restart Auto/PC**.
+
+## 5. Runtime states
+
+Các trạng thái đã quan sát/được xử lý trong Remote/UI gồm các nhóm:
+
+```text
+OFFLINE
+Mất kết nối
+Đang kết nối
+Đang chuẩn bị
+Đang khởi tạo
+Chờ load game
+Đang load game
+Đăng nhập thành công
+Đang hoạt động
+Đang chờ
+Tạm dừng
+```
+
+Runtime có các khái niệm `running/offline`.
+
+UI state và runtime state phải được lưu độc lập; không dùng một trạng thái UI để suy ra mọi lifecycle state.
+
+## 6. Login/lifecycle
+
+Remote có lifecycle liên quan đến:
+
+```text
+connecting
+preparing
+initializing
+loading game
+login success
+active/running
+```
+
+Có các luồng login/relogin được quan sát trong UI/protocol handling.
+
+**PENDING:** chưa đủ evidence để coi login/logout là một control API độc lập. Thiết kế hiện tại coi login/relogin là một phần lifecycle của Start cho tới khi capture protocol riêng chứng minh khác.
+
+## 7. Snapshot / delta / result
+
+Các cơ chế đã xác định:
+
+```text
+scr_list
+scr_list_res
+snapshot
+ delta
+act_result
+```
+
+`act_result` được dùng như ACK/result cho action.
+
+Quy tắc AUTORELOG:
+
+```text
+action
+ ↓
+act_result / ACK
+ ↓
+đọc lại scr_list hoặc delta
+ ↓
+kiểm tra runtime state
+```
+
+Không coi `act_result.ok` là bằng chứng cuối cùng nếu runtime chưa transition.
+
+## 8. row_toggle
+
+Remote có handler/protocol liên quan `row_toggle`.
+
+Hiện được coi là **client-level action candidate** và có khả năng là trigger trực tiếp cho thao tác trên một client.
+
+Tuy nhiên semantics chính xác của `row_toggle` vẫn cần capture trên PC:
+
+```text
+OFFLINE
+ ↓ row_toggle
+ACK
+ ↓ delta/snapshot
+RUNNING?
+```
+
+và chiều ngược lại:
+
+```text
+RUNNING
+ ↓ row_toggle
+ACK
+ ↓ delta/snapshot
+OFFLINE?
+```
+
+**PENDING:** chưa được phép kết luận chỉ từ tên `row_toggle` rằng đây chắc chắn là Start/Stop.
+
+## 9. Bulk action
+
+Remote có cơ chế chọn client và thao tác nhiều client.
+
+`checked` là selection state, **không phải running state**.
+
+Bulk control phải được coi là tập các client action riêng biệt cho mục đích Agent/Scheduler:
+
+```text
+bulk intent
+  ↓
+client_1 action
+client_2 action
+client_3 action
+...
+  ↓
+individual ACK/state verification
+```
+
+Không coi bulk ACK chung là bằng chứng mọi client thành công.
+
+## 10. key / idx / epoch
+
+Các trường/khái niệm liên quan identity/session đã được phát hiện:
+
+```text
+client_id
+idx
+key
+epoch
+```
+
+### idx
+
+`idx` xuất hiện trong discovery/runtime nhưng **không được dùng làm primary identity** vì có thể phụ thuộc thứ tự hiển thị.
+
+### key
+
+Có trường `key` trong client protocol/data handling.
+
+**PENDING:** chưa xác minh key là stable identity, session key hay giá trị tạm.
+
+### epoch
+
+Có khái niệm `epoch` trong protocol/state handling.
+
+**PENDING:** chưa xác minh epoch thuộc snapshot/session/client và quy luật tăng/đổi.
+
+## 11. Heartbeat / reconnect
+
+Client Remote có logic reconnect và backoff.
+
+Baseline thiết kế của AUTORELOG:
+
+```text
+heartbeat interval = 10s
+heartbeat timeout  = 30s
+reconnect = exponential backoff
+```
+
+Đây là **baseline thiết kế**, chưa phải số đo runtime cuối cùng.
+
+Khi reconnect:
+
+```text
+reconnect
+ ↓
+get fresh snapshot
+ ↓
+reconcile runtime
+ ↓
+process queued intent only if healthy
+```
+
+Không phát action mới khi Agent/connection đang unhealthy.
+
+## 12. Refresh cadence
+
+Client Remote có cơ chế refresh `scr_list` định kỳ; trong code đã đọc được chu kỳ khoảng **4 giây**.
+
+Giá trị này được coi là observed client refresh behavior, không phải heartbeat của Agent.
+
+Phân biệt:
+
+```text
+Remote refresh ≠ Agent heartbeat
+```
+
+## 13. ACK vs runtime success
+
+Mô hình xác nhận bắt buộc:
+
+```text
+trigger
+ ↓
+request
+ ↓
+act_result / ACK
+ ↓
+delta/scr_list_res
+ ↓
+runtime state transition
+ ↓
+SUCCESS
+```
+
+Nếu chỉ có ACK nhưng không có transition:
+
+```text
+CONTROL_RESULT = ACK_ONLY / UNCONFIRMED
+```
+
+Scheduler không được coi đó là thành công hoàn toàn.
+
+## 14. Client identity model dự kiến
+
+Dữ liệu runtime/master cần giữ tối thiểu:
+
+```text
+client_id
+name
+idx
+machineId
+roomId
+productId
+key?       # chỉ sau khi xác minh semantics
+state
+uiState
+loginState
+capability
+capabilityAge
+lastSeen
+epoch?     # chỉ sau khi xác minh semantics
+```
+
+`rowIndex/idx` không được làm primary key.
+
+Stable identity phải được kiểm tra bằng:
+
+```text
+capture
+ ↓
+restart Auto
+ ↓
+capture
+ ↓
+restart PC nếu có thể
+ ↓
+capture
+ ↓
+compare
+```
+
+## 15. client_68 / orphan
+
+`client_68` đã được đưa vào kế hoạch như client cần kiểm tra.
+
+Nếu đối chiếu master ↔ discovery ↔ runtime không có mapping hợp lệ thì phân loại:
+
+```text
+ORPHAN / UNKNOWN
+```
+
+Policy:
+
+```text
+visible
+warning
+NO SCHEDULER
+NO START
+NO STOP
+```
+
+**PENDING:** cần live validation trên PC để xác nhận `client_68` thực sự orphan.
+
+## 16. Policy fixed / none / scheduled
+
+Policy model của AUTORELOG:
+
+```text
+scheduled
+fixed
+none
+```
+
+`fixed`:
+
+```text
+if offline at boot → start-at-boot
+if already running → keep running
+no auto-stop
+unless explicit schedule override
+```
+
+`none`:
+
+```text
+scheduler disabled
+```
+
+`scheduled`:
+
+```text
+desiredState computed from active schedule
+```
+
+## 17. desiredState
+
+`desiredState` không phải field để user điều khiển trực tiếp.
+
+Nó được tính từ:
+
+```text
+policy + active schedule + day/time + group state
+```
+
+Ví dụ:
+
+```text
+desired=running + runtime=offline → START candidate
+desired=stopped + runtime=running → STOP candidate
+desired=running + runtime=running → NO ACTION
+```
+
+## 18. Group model
+
+Một client chỉ được thuộc tối đa một scheduling group.
+
+Nếu:
+
+```text
+client_14 → group_A
+client_14 → group_B
+```
+
+thì:
+
+```text
+CONFIG_CONFLICT
+ ↓
+Scheduler BLOCK
+ ↓
+Audit
+```
+
+Không tự chọn group thắng.
+
+## 19. Schedule model
+
+Lịch phải hỗ trợ qua ngày:
+
+```json
+{
+  "start":"19:45",
+  "end":"12:30",
+  "endDayOffset":1
+}
+```
+
+Schedule cần có các khái niệm:
+
+```text
+id
+groupId
+action
+start
+end
+endDayOffset
+days
+enabled
+staggerSeconds
+maxParallel
+retry
+retryDelaySeconds
+gracePeriodSeconds
+timezone
+```
+
+Timezone dự kiến:
+
+```text
+Asia/Ho_Chi_Minh
+```
+
+## 20. XLSX / master
+
+Nguồn lịch:
+
+```text
+lich trinh tat mo.xlsx
+```
+
+Pipeline:
+
+```text
+XLSX
+ ↓
+parse
+ ↓
+normalize
+ ↓
+validate
+ ↓
+clients_master.json
+ ↓
+review
+ ↓
+activate
+```
+
+`clients_master.json` là canonical configuration.
+
+Nếu validation fail:
+
+```text
+DO NOT ACTIVATE
+DO NOT DESTROY CURRENT VALID MASTER
+```
+
+## 21. API/control model dự kiến
+
+Sau khi protocol client-level được chứng minh, Agent tối thiểu cần cung cấp:
+
+```text
+get_clients()
+get_state(client_id)
+start(client_id)
+stop(client_id)
+```
+
+Sau đó Controller/Scheduler có thể xây:
+
+```text
+start_group(group_id)
+stop_group(group_id)
+bulk_action(...)
+```
+
+Không triển khai API Start/Stop production trước khi Start/Stop protocol được capture và xác minh.
+
+## 22. Agent architecture
+
+```text
+Web Dashboard
+      ↓
+Controller / Scheduler
+      ↓ intent
+Agent
+ ├─ discovery
+ ├─ runtime registry
+ ├─ heartbeat
+ ├─ reconnect
+ └─ verified client control
+      ↓
+Auto Ghost Story
+```
+
+Agent không nên phụ thuộc vào click UI/menu script nếu protocol client-level đã được chứng minh.
+
+## 23. Scheduler safety
+
+Scheduler phải có:
+
+```text
+per-client lock
+requestId / idempotency
+state verification
+timeout
+grace period
+stagger
+maxParallel
+finite retry
+audit
+pause on unhealthy Agent
+```
+
+Không gửi action đối nghịch trong khi client đang connecting/loading/login nếu chưa có transition policy phù hợp.
+
+## 24. Security / HAR handling
+
+HAR có thể chứa session/auth information trong WebSocket URL hoặc headers.
+
+Quy tắc:
+
+```text
+HAR raw → LOCAL ONLY
+          ↓
+       scrub auth
+          ↓
+   sanitized evidence
+          ↓
+repo/log/share
+```
+
+Không commit:
+
+```text
+cookie
+session token
+auth token
+password
+credential
+private session URL
+```
+
+## 25. Phase 0 status
+
+### COMPLETED / OBSERVED
+
+- Product id `73`.
+- Product-level `launch/stop/restart` protocol family.
+- `scr_list/scr_list_res` discovery.
+- Client instances và các trường `id/name/idx/state/cap/capAge`.
+- Snapshot/delta model.
+- `act_result` ACK/result.
+- `row_toggle` client-level action candidate.
+- Bulk selection/action behavior.
+- `checked` là selection, không phải running.
+- Remote refresh khoảng 4 giây.
+- Reconnect/backoff logic trong client.
+- Runtime/UI lifecycle states đã được quan sát/xử lý.
+
+### PENDING / CHƯA ĐƯỢC CHỨNG MINH ĐỦ
+
+- Stable `client_id` sau restart Auto/PC.
+- Semantics chính xác của `row_toggle`.
+- `key` semantics.
+- `epoch` semantics.
+- Master ↔ runtime mapping đầy đủ.
+- `fixed/none/orphan` live classification.
+- `client_68` orphan live confirmation.
+- Group conflict live validation.
+- Heartbeat/reconnect measurement thực tế.
+- Client-level Start/Stop protocol capture đầy đủ trên một client test.
+
+## 26. Evidence chain cần hoàn tất
+
+```text
+Remote action
+      ↓
+request/protocol
+      ↓
+act_result
+      ↓
+Auto Ghost Story runtime
+      ↓
+scr_list_res / delta
+      ↓
+state transition
+      ↓
+verified result
+```
+
+Đây là evidence chain chuẩn cho mọi control action của AUTORELOG.
+
+## 27. Gate trước Phase 1
+
+Không chuyển sang production control cho tới khi:
+
+1. Stable identity PASS.
+2. `row_toggle`/Start/Stop correlation PASS trên một client.
+3. `key`/`epoch` đủ rõ.
+4. XLSX → canonical master validation PASS.
+5. Group conflict PASS.
+6. `client_68` orphan test PASS nếu orphan được xác nhận.
+7. Heartbeat/reconnect được kiểm tra.
+8. AutoCycle hiện tại vẫn hoạt động trong thời gian discovery.
+
+## 28. Không ghi nhận các điểm chưa có evidence
+
+Tài liệu này **không khẳng định** các điểm sau khi chưa có capture/live evidence:
+
+- `client_id` chắc chắn stable.
+- `row_toggle` chắc chắn là Start/Stop.
+- `launch(73)` chỉ tác động một client.
+- `stop(73)` chỉ tác động một client.
+- `key` là permanent identity.
+- `epoch` là client version.
+- `client_68` chắc chắn orphan.
+- heartbeat thực tế đúng 10s/30s.
+
+Các điểm trên là blocker/validation item, không phải fact.
+
+## 29. Next action
+
+```text
+B1 Stable ID
+   ↓
+B2 row_toggle + Start/Stop correlation trên 1 client
+   ↓
+B3 key / epoch
+   ↓
+B4 XLSX → master JSON
+   ↓
+B5 group conflict
+   ↓
+B6 client_68
+   ↓
+B7 heartbeat/reconnect
+   ↓
+PHASE 0 PASS
+   ↓
+Agent v1
+```
