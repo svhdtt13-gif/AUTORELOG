@@ -1,1 +1,35 @@
+# PHẢN HỒI VỀ KẾ HOẠCH AUTORELOG (plan)
 
+Đây là phản hồi đối với bản kế hoạch v1 (file plan). Mục tiêu: làm rõ điểm mạnh, điểm cần bổ sung và rủi ro trước khi bắt đầu sửa code.
+
+## 1. ĐÁNH GIÁ TỔNG QUAN
+Kế hoạch rất bài bản, phân tầng rõ ràng (Web -> Scheduler/DB -> Agent -> Auto Ghost Story), có nguyên tắc phát triển tốt (không hard-code index, không nhầm checked/running, không commit secret, action phải có audit). Đặc biệt đúng khi gating các endpoint Start/Stop/Login phía sau việc xác minh protocol thực tế. Cấu trúc này hoàn toàn khả thi làm nền tảng.
+
+## 2. ĐIỂM MẠNH
+- Tách biệt rõ runtimeState / uiState / loginState / desiredState - tránh lỗi kinh điển.
+- State machine + stagger + maxParallel + retry + idempotency key đúng chuẩn điều khiển hàng loạt.
+- Roadmap chia pha hợp lý, ưu tiên Discovery -> Registry -> Control -> Groups -> Scheduler.
+- Đã loại trừ secret khỏi repo (khớp .gitignore hiện tại: config.json, ngrok.txt đã bị loại).
+
+## 3. ĐIỂM CẦN BỔ SUNG / CHỈNH SỬA
+1. Thieu phan "Current State / Baseline". AUTORELOG hien da co MVP hoat dong that: db.html (realtime), AutoCycle.ps1 (scheduler theo nhom), sync_master.ps1, serve.ps1, ngrok public URL, va da ho tro dynamic group + slot tu tinh. Ke hoach nen ghi ro cai gi da chay de Phase 1 ke thua, tranh viet lai va rut ro hu hong chuc nang hien co.
+2. Mo hinh ket noi chua ro. Kien truc ve Web -> HTTPS -> Agent nhung chua noi ro Agent chay tren PC co Auto Ghost Story va duoc truy cap qua tunnel ngrok (da co san). Can ghi ro: Agent = serve.ps1 tren PC + ngrok, Web goi qua URL public.
+3. Xac minh Stable Client ID phai la buoc so 1 cua Phase 1. scr_list tra ve client id / machine / room - can xac nhan dinh dang ID thuc te tu HAR truoc khi dung Client Registry, neu khong mapping se hong.
+4. Trung lap nguon lich. Da co clients_master.json (schedule gr1-4 + dynamic) VA lich trinh tat mo.xlsx. Can quyet dinh mot nguon duy nhat (master) va coi xlsx la du lieu tham chieu import 1 lan, tranh 2 noi cung la truth.
+5. UI nen tien hoa tang dan. db.html hien la single-page da lam tot. Thay vi viet lai thanh da trang (Overview/Clients/Groups/Scheduler/History), hay them tab vao db.html hien tai de giu nguyen tinh nang dang chay.
+6. Thieu canh bao khi transition that bai. Muc 4/12 noi "xac nhan state thuc te" nhung chua co alert khi mot group sau Start van khong vao RUNNING sau gracePeriod. Nen bo sung error dashboard / notification.
+7. Quan he desiredState vs lich. Khi co ca schedule (desired tu lich) va desiredState per-client, can quy tac uu tien ro de khong conflict.
+
+## 4. RỦI RO
+- Cac script hien tai (ClickStop*.ps1, ToggleRow*.ps1...) dang dua vao UI automation/menu. Ke hoach dung khi khong hard-code menu path, nhung can lo trinh migrate nhung script nay sang bridge ro rang (protocol contract) - neu khong se thanh no ky thuat.
+- db.html public qua ngrok-free domain doi moi restart -> can co che cap nhat URL hoac dung ngrok tra phi / tunnel co dinh truoc khi production.
+
+## 5. ĐỀ XUẤT ƯU TIÊN
+1. Them muc "Baseline hien tai" liet ke chuc nang AUTORELOG da chay.
+2. Phase 1: uu tien xac minh Stable Client ID tu scr_list + doc AutoCycle.ps1/serve.ps1 tai su dung.
+3. Giu db.html lam dashboard duy nhat, mo rong bang tab.
+4. Bo sung alert khi state transition that bai.
+5. Chuan hoa xlsx -> master, khong duy tri 2 nguon lich.
+
+## 6. KẾT LUẬN
+Ke hoach v1 da san sang lam khung. Chi can neo vao MVP hien co, lam ro mo hinh ket noi ngrok, va xac minh ID on dinh ngay Phase 1 la co the bat dau sua code ma khong dap di xay lai.
