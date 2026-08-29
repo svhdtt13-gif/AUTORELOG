@@ -1,0 +1,1 @@
+@echo off\r\nREM Kh?i ??ng to?n b? chu k?\r\ncd /d "
