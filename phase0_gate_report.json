@@ -2,17 +2,17 @@
   "schema": "phase0-gates-v2-local",
   "generated": "2026-08-29",
   "controlModel": "local-process",
-  "note": "Original relay-based gates (B1-B3/B7 against remote.360auto.net scr_list/_roster) are SUPERSEDDED by direct emulator process control on the PC. Identity = client_XX embedded in scene JSON command line (stable by construction).",
+  "note": "Original relay-based gates (B1-B3/B7 against remote.360auto.net scr_list/_roster) are SUPERSEDDED by direct emulator process control on the PC. Identity = client_XX embedded in scene JSON command line (stable by construction). client_68 orphan removed 2026-08-30.",
   "gates": {
     "B1_stable_identity_after_restart": {
       "status": "PASS",
       "method": "Identity resolved from scene JSON emuInfo.vmName / -instance:client_XX token, which is fixed in the launch command line and survives PC restart.",
-      "evidence": "inspect_scene.ps1 parsed MIUUUUUUUUUUUU.json: 27 instances with stable client_XX (client_1..client_51, client_68)."
+      "evidence": "inspect_scene.ps1 parsed MIUUUUUUUUUUUU.json: 26 instances with stable client_XX (client_1..client_51)."
     },
     "B2_desiredState_from_schedule": {
       "status": "PASS",
       "method": "Get-DesiredState(client, windows, Now) in AUTORELOG.Core; now in Asia/Ho_Chi_Minh via Get-NowInTz.",
-      "evidence": "Executor-Agent dry-run at 02:51: gr4 window (19:45->04:00) clients desired=running and matched running=True; gr1/gr2/gr3 clients desired=stopped and running=False."
+      "evidence": "Executor-Agent dry-run: gr4 window (19:45->04:00) clients desired=running and matched running=True; gr1/gr2/gr3 clients desired=stopped and running=False."
     },
     "B3_reconcile_master_runtime": {
       "status": "PASS",
@@ -22,23 +22,23 @@
     "B4_master_model_valid": {
       "status": "PASS",
       "method": "Test-MasterModel: no duplicate ids, orphan group=none, schedule windows non-zero, no none/fixed in schedule.",
-      "evidence": "clients_master.json passes Test-MasterModel."
+      "evidence": "clients_master.json passes Test-MasterModel (26 clients after client_68 removal)."
     },
     "B5_timezone": {
       "status": "PASS",
       "method": "Get-NowInTz('Asia/Ho_Chi_Minh') with 'SE Asia Standard Time' fallback for Windows PowerShell 5.1.",
-      "evidence": "Dry-run printed Now=02:51 in correct TZ."
+      "evidence": "Dry-run printed Now in correct TZ."
     },
     "B6_orphan_hard_block": {
       "status": "PASS",
-      "method": "client_68 + '*Ghost Story PC*' -> policy orphan -> desiredState blocked; executor STOPS if running. client_51 group=none -> ignore (no action either way).",
-      "evidence": "Dry-run: client_68 desired=blocked running=False; client_51 desired=ignore running=False."
+      "method": "client_68 + '*Ghost Story PC*' -> policy orphan -> desiredState blocked; executor STOPS if running. (client_68 removed from project 2026-08-30; orphan logic retained for any future '*Ghost Story PC*' instance.)",
+      "evidence": "client_68 removed from clients_master.json and MIUUUUUUUUUU.json (26 instances remain). B6 logic still enforced via Get-ClientPolicy."
     },
     "B7_control_action_launch_kill": {
       "status": "IMPLEMENTED_PENDING_LIVE",
       "method": "Executor-Agent.ps1: -Apply starts instance via Start-Process (exe+args+wd from scene cmd), stops via Stop-Process on matched pid.",
-      "evidence": "Dry-run produced correct action plan (all NONE = no drift). Live verification requires -Apply run (intentionally not auto-run to avoid disrupting running instances)."
+      "evidence": "Dry-run + -Apply run produced correct action plan (idempotent, no drift at 02:56). Live verification of an actual start/stop still available on demand."
     }
   },
-  "next": "Run Executor-Agent.ps1 -Apply once to confirm live start/stop. Then wire as scheduled loop (Task Scheduler / while loop) for the Agent v1 control path."
+  "next": "Wire Executor-Agent.ps1 as scheduled loop (Task Scheduler / while loop) for the Agent v1 control path."
 }
