@@ -1,24 +1,24 @@
-# PHẢN HỒI KẾ HOẠCH v3 — AUTORELOG / AutoGhostStory Client Manager
+# PHẢN HỒI KẾ HOẠCH v4 — AUTORELOG / AutoGhostStory Client Manager
 
-Review date: 2026-08-29 | plan SHA: 8112cfc6129df0ea98a94f4bfb097bf6b4e94ee4
+Review date: 2026-08-29 | plan SHA: 2ad9cd293f12a30c5c5ad5af81fa720f617efc28
 
-## 1. v3 ĐÃ LÀM RẤT TỐT
-- 9 quyết định từ v2 được cứng hóa thành §1 (bắt buộc). ✓
-- Phase 0 blocker rõ ràng B1–B5 + danh sách deliverables cụ thể. ✓
-- Data model: `groupId` đơn (không array) → triệt tiêu multi-group từ gốc; thêm `identityVerified`, `orphan`. ✓
-- Schedule có `endDayOffset` → giải quyết lịch qua đêm. ✓
-- §14 thứ tự code, §13 test plan, §15 acceptance, §17 quy trình review khớp đúng workflow. ✓
-- Rút gọn từ 16912 → 9248 ký tự, tập trung vào quyết định thay vì liệt kê dài. ✓
+## 1. v4 ĐÃ GIẢI QUYẾT TOÀN BỘ 8 ĐIỂM TỪ v3
+- B5 có cách capture cụ thể (10 mục ghi chú + tái dùng ClickStop*/ToggleRow* làm trigger quan sát). ✓
+- `fixed` policy rõ: start-at-boot nếu offline, không auto-stop, chỉ explicit override. ✓
+- `desiredState` computed/read-only (§1, §5, §8, §9 "Desired chỉ hiển thị computed"). ✓
+- XLSX importer ghi trực tiếp `clients_master.json` canonical (§1, §4 B2, §11). ✓
+- Non-breaking transition (§1 điểm 13, §12, §14 test compatibility). ✓
+- Heartbeat 10s / timeout 30s (§4 B6, §6, §16). ✓
+- HAR scrub auth (§4 B5, §13, §16, §18). ✓
+- Orphan `client_68` hard-block + test case (§4 B3, §13, §14, §16). ✓
+- Thêm trường `policy` vào data model và §18 có traceability SHA. Rất tốt.
 
-## 2. ĐIỂM CẦN LÀM RÕ TRƯỚC APPROVAL
-1. Cơ chế capture Start/Stop (B5) chưa định nghĩa CÁCH. Đề xuất: capture = quan sát transition của `scr_list` khi bấm menu thủ công (tái dùng `ClickStop*`/`ToggleRow*` hiện có làm trigger) + ghi lại before/after state và request/response. Thiếu cách capture cụ thể sẽ kẹt Phase 0.
-2. Chính sách `fixed` chưa dứt khoát: "chỉ manual hoặc explicit schedule" nhưng làm sao fixed được bật lần đầu? Đề xuất định nghĩa rõ: `fixed` = start-at-boot nếu offline, KHÔNG auto-stop, trừ khi có explicit schedule override. Cần constant để Scheduler v1 không lầm.
-3. `desiredState` trong model (§5) dễ conflict với lịch (§8 lấy lịch làm driver). Đề xuất: `desiredState` là trường TÍNH TOÁN (read-only) từ schedule mỗi tick, không phải do user set riêng, tránh drift.
-4. XLSX import (§11 / §4 B2): phải GHI VÀO `clients_master.json` (canonical), không tạo nguồn thứ 2. §2 đã nói JSON canonical — hãy nói rõ importer export vào master JSON.
-5. Transition không phá hệ đang chạy: hiện `AutoCycle` đang chạy trên `clients_master.json` với ID giả định. Cần ghi chú "giữ nguyên hệ hiện tại đến khi Phase 0 xong rồi mới switch", tránh downtime.
-6. Heartbeat: §6/§9 nói có nhưng thiếu constant (vd 10s heartbeat, 30s timeout). Đề xuất thêm thông số để Agent/Web nhất quán.
-7. HAR ở Phase 0 chứa cookie/session → phải SCRUB trước khi đụng repo. §12/§17 nói không commit HAR, nhưng cần nhấn: HAR capture chỉ lưu local, tẩy auth trước bất kỳ share/log nào.
-8. `client_68` orphan: thêm vào test plan (§13) một case xác nhận orphan KHÔNG bị schedule.
+## 2. TINH CHỈNH NHỎ TRƯỚC APPROVAL (không phải blocker)
+1. **Enum `policy` chưa định nghĩa đầy đủ.** Model chỉ hiện `"policy":"scheduled"`. Đề xuất định nghĩa rõ: `fixed | scheduled | none | orphan` và mối quan hệ với `groupId`: `fixed` → groupId="fixed"; `none` → groupId=null & không schedule; `scheduled` → groupId=grX. Tránh ambiguity khi implement.
+2. **B5 — tái dùng script cũ dễ gây hiểu lầm.** Plan nói "tái sử dụng ClickStop*/ToggleRow* làm trigger quan sát", nhưng ở §3/§17 lại cấm hard-code menu path. Cần làm rõ: B5 capture chỉ DÙNG script cũ để kích hoạt thao tác, còn Agent MỚI phải dùng protocol đã capture (WebSocket/request), KHÔNG dựa vào tọa độ menu của script cũ. Nếu không sẽ lặp lại nợ kỹ thuật UI-automation.
+3. **BẢO MẬT: API control thiếu auth.** §10 thêm POST /api/clients/:id/start, /stop, /bulk-action... nhưng `db.html` hiện public qua ngrok-free. Ai cũng có thể gọi Start/Stop. Đề xuất: mọi control endpoint PHẢI có auth (vd shared-secret header / token đơn giản) ít nhất trước khi expose qua ngrok. Đây là lỗ hổng quan trọng do đặc thù public URL.
+4. **Migration nên dual-run / feature-flag.** §12 nói "migration có rollback" nhưng chưa rõ hình thức. Đề xuất: Phase 1–3 Agent MỚI chạy song song ở chế độ read-only (quan sát) cùng AutoCycle hiện tại; chỉ sau khi khớp state mới bật control path và tắt AutoCycle. Đảm bảo cut-over không downtime thực sự.
+5. **Thời gian / timezone.** Schedule có `timezone: Asia/Ho_Chi_Minh` ở group nhưng thời gian start/end là local. Cần quy định: thời gian trong schedule được hiểu theo timezone của group, Agent convert sang local. Và định nghĩa rõ `days:[1..7]` (1=Thứ 2?). Tránh lệch giờ.
 
 ## 3. KẾT LUẬN
-v3 đã approval-ready. Chỉ cần bổ sung: (1) cách capture B5, (2) chính sách `fixed` rõ, (3) `desiredState` computed, (4) xlsx → master JSON, (5) non-breaking transition, (6) heartbeat constants. Sau đó có thể duyệt Phase 0 và bắt đầu Discovery.
+v4 đã approval-ready cho Phase 0. Chỉ cần bổ sung: (1) enum `policy` + quan hệ groupId, (2) làm rõ Agent mới dùng protocol không dùng menu script cũ, (3) **thêm auth cho control API** (quan trọng do ngrok public), (4) dual-run migration, (5) quy định timezone/days. Sau đó có thể duyệt và bắt đầu Phase 0 (Discovery).
