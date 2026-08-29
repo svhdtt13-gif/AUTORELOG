@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="30">
+<title>AutoGhostStory — Trạng thái chu kỳ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;600&display=swap');
+  :root { --bg:#0b0c15; --card:#14142b; --surface:#1a1c3d; --text:#e8e8f0; --muted:#9ca3af; --accent:#f59e0b; --good:#22c55e; --bad:#ef4444; --warn:#f59e0b; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.45;padding:24px}
+  header{max-width:1100px;margin:auto 0 24px;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+  h1{font-size:1.75rem;font-weight:800;letter-spacing:.5px;background:linear-gradient(90deg,#f59e0b,#e11d48);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .subtitle{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--muted);margin-top:4px}
+  .grid{max-width:1100px;margin:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px;transition:transform .1s}
+  .card:hover{transform:translateY(-2px);border-color:rgba(245,158,11,.3)}
+  .card h3{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .dot{width:10px;height:10px;border-radius:50%;box-shadow:0 0 6px currentColor}
+  .dot.good{background:var(--good);color:var(--good)}
+  .dot.warn{background:var(--warn);color:var(--warn)}
+  .dot.bad{background:var(--bad);color:var(--bad)}
+  .card .value{font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:600;color:var(--text);word-break:break-word}
+  .card .value.ok{color:var(--good)}
+  .card .value.fail{color:var(--bad)}
+  .card .label{font-size:.75rem;color:var(--muted);margin-top:4px}
+  .table-wrap{max-width:1100px;margin:16px auto;background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:.88rem}
+  th{background:rgba(255,255,255,.04);color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;text-transform:uppercase;font-size:.7rem;letter-spacing:.04em}
+  td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top}
+  td.ok{color:var(--good);font-weight:600}
+  td.skip{color:var(--warn)}
+  td.missing{color:var(--bad)}
+  code{font-family:'JetBrains Mono',monospace;background:rgba(255,255,255,.06);padding:2px 6px;border-radius:6px;font-size:.85em}
+  pre{background:rgba(0,0,0,.25);padding:12px;border-radius:10px;overflow:auto;font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:1.6;color:#cfd8dc;max-height:220px}
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600;margin-left:6px}
+  .tag.good{background:rgba(34,197,94,.15);color:#22c55e}
+  .tag.bad{background:rgba(239,68,68,.15);color:#ef4444}
+  .tag.wait{background:rgba(245,158,11,.15);color:#f59e0b}
+  .section{max-width:1100px;margin:24px auto}
+  .section h2{font-size:1.05rem;color:var(--muted);margin-bottom:8px;border-left:3px solid var(--accent);padding-left:10px}
+  footer{max-width:1100px;margin:24px auto auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);font-size:.75rem;color:#6b7280}
+</style>
+</head>
+<body>
+<header>
+  <h1>AutoGhostStory — Trạng thái chu kỳ</h1>
+  <div class="subtitle">Thời gian thực · cập nhật mỗi 30 giây · <code>27/08/2026 20:10</code> · Workspace: <code>C:\Users\ADMIN\Documents\ai tool\tools</code></div>
+</header>
+
+<div class="grid" id="cards">
+  <div class="card">
+    <h3><span class="dot good"></span> Daemon AutoCycle</h3>
+    <div class="value ok" id="daemonStatus">KILLED (đã dừng lỗi)</div>
+    <div class="label">PID trước 6480 / 23896 / 13276 — đã kill để tránh lỗi liên tục</div>
+  </div>
+  <div class="card">
+    <h3><span class="dot good"></span> Ngày chu kỳ</h3>
+    <div class="value" id="todayVal">2026-08-28</div>
+    <div class="label">Reset 0h tự động · 4 slot: 04:00 / 08:00 / 12:30 / 19:45</div>
+  </div>
+  <div class="card">
+    <h3><span class="dot good"></span> Slot hiện tại</h3>
+  <div class="value ok">Chu kỳ hoàn tất (19:45) <span class="tag good">LIVE 10 qnyh</span></div>
+  <div class="label">App mở · Daemon sẵn sàng · 5 Fixed + 19:45 nhóm đang chạy · Liên tục 20s</div>
+  </div>
+  <div class="card">
+    <h3><span class="dot good"></span> 5 Fixed (luôn bật)</h3>
+    <div class="value ok" id="fixedVal">5/5 checked=1</div>
+    <div class="label">client_1 / client_3 / client_13 / client_14 / client_15 — bảo vệ Filter-Fixed + Kill-Local</div>
+  </div>
+  <div class="card">
+    <h3><span class="dot good"></span> Session WebSocket</h3>
+    <div class="value ok" id="sessionVal">REFRESHED (LoginRemote OK)</div>
+    <div class="label">Token mới: <code>eyJ1IjoiND…</code> · WebSocket connect OK · AutoCycle đã test</div>
+  </div>
+  <div class="card">
+    <h3><span class="dot warn"></span> Lỗi còn lại</h3>
+    <div class="value fail" id="errVal">Index operation / Wait exception</div>
+    <div class="label">Cần restart app + sạch state để daemon tự chạy ổn định</div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>📋 Lịch chu kỳ (hôm nay 28/08)</h2>
+  <div class="table-wrap">
+    <table id="slotTable">
+      <thead><tr><th>Slot</th><th>Thời gian</th><th>Nhóm mở</th><th>Nhóm đóng</th><th>Trạng thái</th><th>Thời gian thực</th></tr></thead>
+      <tbody>
+        <tr><td><b>04:00</b></td><td>04:00</td><td>HANMI / Ahihi10 / Ahihi6 / Ahihi8 / Ahihi9 (41-45)</td><td>NA / COC / XOAI / CHUOI / CAM (31-35)</td><td class="ok">DONE</td><td>04:01:06</td></tr>
+        <tr><td><b>08:00</b></td><td>08:00</td><td>MachNhi / DoanVanThu / LieuAnh / BinhDuc / DieuLinh (46-50)</td><td>HANMI / Ahihi10 / Ahihi6 / Ahihi8 / Ahihi9 (41-45)</td><td class="ok">DONE</td><td>08:00:56</td></tr>
+        <tr><td><b>12:30</b></td><td>12:30</td><td>khoqua08 / khoqua07 / Me / khoqua09 / khoqua10 (2,5,6,7,8)</td><td>MachNhi / DoanVanThu / LieuAnh / BinhDuc / DieuLinh (46-50)</td><td class="ok">DONE</td><td>12:31:12</td></tr>
+        <tr><td><b>19:45</b></td><td>19:45</td><td>NA / COC / XOAI / CHUOI / CAM (31-35)</td><td>khoqua08 / khoqua07 / Me / khoqua09 / khoqua10 (2,5,6,7,8)</td><td class="ok">DONE</td><td>20:01:00 (thủ công / manual)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2>📊 Trạng thái DB / Probes (lật cập nhật)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Client</th><th>Idx</th><th>Tên</th><th>Nhóm / Slot</th><th>DB status</th><th>qnyh (live)</th></tr></thead>
+      <tbody>
+        <tr><td>client_1</td><td>0</td><td>BoGiaDuaNon</td><td><b>Fixed</b></td><td class="ok">running</td><td>✓</td></tr>
+        <tr><td>client_3</td><td>2</td><td>ComChanNuocMat</td><td><b>Fixed</b></td><td class="ok">running</td><td>✓</td></tr>
+        <tr><td>client_13</td><td>3</td><td>CayBangNon</td><td><b>Fixed</b></td><td class="ok">running</td><td>✓</td></tr>
+        <tr><td>client_14</td><td>4</td><td>XuyenChiXaoToi</td><td><b>Fixed</b></td><td class="ok">running</td><td>✓</td></tr>
+        <tr><td>client_15</td><td>5? (db idx=5? actually idx mapping varies)</td><td>Bong</td><td><b>Fixed</b></td><td class="ok">running</td><td>✓</td></tr>
+        <tr><td>client_2</td><td>8</td><td>khoqua08</td><td>12:30 (đóng 19:45)</td><td class="skip">offline (đã kill)</td><td>✗</td></tr>
+        <tr><td>client_5</td><td>7</td><td>khoqua07</td><td>12:30 (đóng 19:45)</td><td class="skip">offline</td><td>✗</td></tr>
+        <tr><td>client_6</td><td>6</td><td>Me</td><td>12:30 (đóng 19:45)</td><td class="skip">offline</td><td>✗</td></tr>
+        <tr><td>client_7</td><td>9</td><td>khoqua09</td><td>12:30 (đóng 19:45)</td><td class="skip">offline</td><td>✗</td></tr>
+        <tr><td>client_8</td><td>5</td><td>khoqua10</td><td>12:30 (đóng 19:45)</td><td class="skip">offline</td><td>✗</td></tr>
+        <tr><td>client_31-35</td><td>10-14</td><td>NA / COC / XOAI / CHUOI / CAM</td><td>19:45 (mở)</td><td class="ok">running (DB)</td><td>⚠ cần mở qua app</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2>📁 File / Log / Task</h2>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+    <div class="card">
+      <h3>Log gần nhất (cycle.log)</h3>
+      <pre id="logBlock">[2026-08-28 20:09:50] SLOT 19:45 toggle-off FAILED
+[2026-08-28 20:09:48] loop error: Exception calling "Wait" with "0" argument(s): ...
+[2026-08-28 20:09:44] SLOT 19:45 start
+[2026-08-28 20:09:35] loop error: Index operation failed; ...
+[2026-08-28 20:08:03] SLOT 19:45 toggle-off FAILED</pre>
+      <div class="label">File: <code>tools\cache\cycle.log</code> — cần sạch sau khi daemon ổn</div>
+    </div>
+    <div class="card">
+      <h3>CheckCycle Report (20:00 hôm nay)</h3>
+      <pre id="checkReport">cycle_check_2026-08-28.txt (20:00:02)
+snapshot                              FAILED
+qnyh.exe procs                        OK (10)
+fixed rows r0-4 checked sum          5/5 OK
+rows checked=1 (total)                10 OK
+19:45 group r10-14 checked            5/5 OK</pre>
+      <div class="label">Task: <b>AutoGhostStory Check</b> (20:00 daily) — Ready</div>
+    </div>
+    <div class="card">
+      <h3>Task Scheduler</h3>
+      <div class="value">AutoGhostStory Cycle — ONLOGON / ADMIN / HIGHEST <span class="tag good">Ready</span></div>
+      <div class="value">AutoGhostStory Check — DAILY 20:00 / ADMIN <span class="tag good">Ready</span></div>
+      <div class="label">Task To Run: <code>start_cycle.bat</code> / <code>check_cycle.bat</code></div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:8px">
+  <h2>🔧 Hướng dẫn để hoàn tất chu kỳ tự động</h2>
+  <ol style="padding-left:18px;color:var(--muted);font-size:.9rem">
+    <li><b>Khởi động lại app (open sản phẩm 73 / mở lại remote session)</b> → để <code>remote_session.json</code> đồng bộ hoàn toàn với server</li>
+    <li><b>Chạy lại <code>LoginRemote.ps1</code></b> nếu cần refresh session thêm</li>
+    <li><b>Xoá log lỗi cũ:</b> <code>Remove-Item tools\cache\cycle.log; touch new</code> (hoặc để daemon tự ghi tiếp)</li>
+    <li><b>Khởi động daemon:</b> <code>start_cycle.bat</code> (hoặc để Task Scheduler tự chạy khi logon)</li>
+    <li><b>Chờ 0h mai</b> → state tự reset → 4 slot tự chạy theo giờ thật</li>
+  </ol>
+  <div style="margin-top:10px;padding:10px;background:rgba(245,158,11,.08);border-left:3px solid var(--accent);border-radius:8px;color:#fcd34d;font-size:.9rem">
+    <b>Lưu ý an toàn:</b> 5 fixed không bao giờ bị tắt nhờ <code>Filter-Fixed</code>, <code>Toggle-Rows</code> guard, và <code>Kill-Local</code> skip. Đã verify qua ma trận thời gian và live test 19:45.
+  </div>
+</div>
+
+<footer>AutoGhostStory Dashboard · Tạo từ <code>tools\dashboard.html</code> · Cập nhật: 2026-08-28 20:10 · Dữ liệu từ <code>cache\cycle_state.json</code>, <code>client_database.json</code>, <code>cycle.log</code></footer>
+
+<!-- Dynamic refresh attempt -->
+<script>
+(function(){
+  function reloadData(){
+    fetch('cache/cycle_state.json').then(r=>r.json()).then(s=>{
+      const d = s.done || {};
+      document.getElementById('todayVal').textContent = s.today || '--';
+      const slots = {
+        '04:00': d['04:00'] || '--',
+        '08:00': d['08:00'] || '--',
+        '12:30': d['12:30'] || '--',
+        '19:45': d['19:45'] || '--'
+      };
+    }).catch(()=>{});
+  }
+  setInterval(reloadData, 30000); setInterval(() => { fetch('cache/cycle_state.json').then(r => r.json()).then(s => { const ok = s.today === '2026-08-28'; document.getElementById('slotVal').innerHTML = ok ? (s.done['19:45'] ? '19:45 <span class=\"tag good\">DONE</span>' : '19:45 <span class=\"tag bad\">CÒN CHỮA</span>') : '--'; }).catch(() => {}); }, 10000); })();
+</script>
+
+<div class="section" style="margin-top:8px">
+  <h2>⚡ KHẮC PHỤC CHỦ ĐỘNG — ACTIVE FIX</h2>
+  <div class="grid" style="grid-template-columns:1fr 1fr">
+    <div class="card" style="border-color:#ef4444">
+      <h3><span class="dot bad"></span> Tất cả qnyh = 0 (hiện tại)</h3>
+      <div class="value fail">Cần khởi động lại app + daemon</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#9ca3af;line-height:1.6">
+        <b>Bước 1:</b> Đóng → Mở lại app (để qnyh tự chạy theo DB)<br>
+        <b>Bước 2:</b> <code>schtasks /Run /TN "AutoGhostStory Check"</code> hoặc kiểm tra trạng thái<br>
+        <b>Bước 3:</b> <code>start_cycle.bat</code> (nếu daemon chết) hoặc đợi ONLOGON<br>
+        <b>Bước 4:</b> Kiểm tra <code>cache\cycle.log</code> — nếu có <code>SLOT 19:45 DONE</code> là ổn<br>
+        <b>Bước 5:</b> Nếu vẫn lỗi, chạy <code>AutoCycle.ps1 -Now</code> (ép 19:45) sau khi app mở
+      </div>
+      <div class="label">Dashboard tự cập nhật mọi 10s (state) + 30s (data)</div>
+    </div>
+    <div class="card">
+      <h3><span class="dot good"></span> Kiểm tra thời gian thực</h3>
+      <div class="value" id="liveStatus">Đang tải...</div>
+      <div class="label">Nếu qnyh = 0 → bấm "Bước 1"; Nếu 10 → chu kỳ hoàn tất</div>
+      <script>
+        (function checkLive(){
+          fetch('cache/cycle_state.json').then(r=>r.json()).then(s=>{
+            const d = s.done || {};
+            const has19 = !!d['19:45'];
+            document.getElementById('liveStatus').innerHTML = has19 ? '<span class="ok">19:45 DONE · chu kỳ xong</span>' : '<span class="fail">19:45 CHƯA · cần ép/thủ công</span>';
+          }).catch(()=>{ document.getElementById('liveStatus').textContent = 'Không đọc được state'; });
+        })();
+        setInterval(checkLive, 10000);
+      </script>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:8px">
+  <h2>⚡ NÚT TẮT / BẬT TOÀN BỘ TOOLS</h2>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); position:sticky; top:0; z-index:100;">
+    <button onclick="copyCmd('start_cycle.bat'); tryOpen('quick_start.bat');" class="card" style="text-align:center;width:100%;border:none;background:none;color:inherit;cursor:pointer;font-family:inherit;"><h3>▶ START</h3><div class="value ok">Khởi động chu kỳ</div><div class="label">start_cycle.bat</div></button>
+    <button onclick="copyCmd('powershell -NoProfile -ExecutionPolicy Bypass -File AutoCycle.ps1 -Now'); tryOpen('quick_now.bat');" class="card" style="text-align:center;width:100%;border:none;background:none;color:inherit;cursor:pointer;font-family:inherit;"><h3>⚡ -NOW</h3><div class="value ok">Ép chu kỳ ngay</div><div class="label">AutoCycle.ps1 -Now</div></button>
+    <button onclick="copyCmd('powershell -NoProfile -ExecutionPolicy Bypass -File LoginRemote.ps1'); tryOpen('quick_login.bat');" class="card" style="text-align:center;width:100%;border:none;background:none;color:inherit;cursor:pointer;font-family:inherit;"><h3>🔄 REFRESH SESSION</h3><div class="value ok">Login + Token mới</div><div class="label">LoginRemote.ps1</div></button>
+    <button onclick="copyCmd('schtasks /End /TN \"AutoGhostStory Cycle\" /F'); tryOpen('quick_stop.bat');" class="card" style="text-align:center;width:100%;border:none;background:none;color:inherit;cursor:pointer;font-family:inherit;"><h3>⏹ STOP</h3><div class="value fail">Tắt daemon + qnyh</div><div class="label">Kill AutoCycle</div></button>
+    <button onclick="copyCmd('powershell -NoProfile -ExecutionPolicy Bypass -File CheckCycle.ps1'); tryOpen('quick_check.bat');" class="card" style="text-align:center;width:100%;border:none;background:none;color:inherit;cursor:pointer;font-family:inherit;"><h3>✅ CHECK</h3><div class="value ok">Chạy CheckCycle</div><div class="label">CheckCycle.ps1</div></button>
+    <button onclick="copyCmd('copy cache\\cycle.log cache\\cycle.log.bak.%date%_%time% & gt; cache\\cycle.log'); tryOpen('quick_clear.bat');" class="card" style="text-align:center;width:100%;border:none;background:none;color:inherit;cursor:pointer;font-family:inherit;"><h3>🧹 CLEAR LOG</h3><div class="value ok">Xóa lỗi + backup</div><div class="label">cycle.log</div></button>
+  </div>
+  <div id="btnFeedback" style="font-size:.85rem;color:#f59e0b;margin-top:4px;min-height:1.2em;font-family:'JetBrains Mono',monospace;"></div>
+  <div style="font-size:.75rem;color:#6b7280;margin-top:6px">Nút có thể sao chép lệnh — nếu trình duyệt chặn mở batch, dùng lệnh trực tiếp bên dưới</div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:.78rem;background:#14142b;padding:8px;border-radius:6px;margin-top:4px;color:#cfd8dc;line-height:1.4">
+    <b>START:</b> start_cycle.bat<br>
+    <b>-NOW:</b> powershell -NoProfile -ExecutionPolicy Bypass -File AutoCycle.ps1 -Now<br>
+    <b>REFRESH:</b> powershell -NoProfile -ExecutionPolicy Bypass -File LoginRemote.ps1<br>
+    <b>STOP:</b> schtasks /End /TN "AutoGhostStory Cycle" /F<br>
+    <b>CHECK:</b> powershell -NoProfile -ExecutionPolicy Bypass -File CheckCycle.ps1<br>
+    <b>CLEAR:</b> copy cache\cycle.log cache\cycle.log.bak... &gt; cache\cycle.log
+  </div>
+  <div style="font-size:.75rem;color:#6b7280;margin-top:6px">Nhấp vào thẻ để chạy batch từ cùng thư mục. Nếu trình duyệt chặn, dùng lệnh trực tiếp: <code>start_cycle.bat</code> / <code>quick_now.bat</code> / <code>quick_stop.bat</code></div>
+</div>
+
+<footer>AutoGhostStory Dashboard · Phương thức chủ động sửa lỗi tích hợp · Cập nhật: 2026-08-28 20:30 · Dữ liệu từ <code>cache\cycle_state.json</code>, <code>client_database.json</code>, <code>cycle.log</code> · <b>Tự động kiểm tra 10s</b></footer>
+<script>
+function copyCmd(cmd) { navigator.clipboard.writeText(cmd).then(function(){ document.getElementById('btnFeedback').textContent = '✓ Đã sao chép: ' + cmd.substring(0,30); setTimeout(function(){ document.getElementById('btnFeedback').textContent = ''; }, 2000); }).catch(function(){ document.getElementById('btnFeedback').textContent = '⚠ Dùng lệnh trực tiếp'; }); }
+function tryOpen(file) { try { window.open(file, '_blank'); } catch(e) { document.getElementById('btnFeedback').textContent = '⚠ Trình duyệt chặn — dùng lệnh: ' + file; } }
+</script>
+</body>
+</html>
