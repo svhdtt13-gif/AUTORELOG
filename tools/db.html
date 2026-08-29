@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<title>DB Status — AutoGhostStory</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400&display=swap');
+:root{--bg:#0b0c15;--surface:#14142b;--card:#181a33;--text:#e8e8f0;--sub:#9ca3af;--good:#22c55e;--bad:#ef4444;--warn:#f59e0b;--accent:#f59e0b;--line:#2a2d45}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.45;padding:24px;background-image:linear-gradient(rgba(11,12,21,.82),rgba(11,12,21,.82)),url('bg.jpg');background-size:cover;background-position:center;background-attachment:fixed}
+h1{font-family:'Segoe UI',sans-serif;font-size:1.75rem;font-weight:800;letter-spacing:.5px;color:var(--text);border-bottom:2px solid var(--accent);padding-bottom:12px}
+.sub{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--sub);margin-top:6px}
+.card{background:transparent;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:16px;margin-bottom:16px;transition:border-color .2s}
+.card:hover{border-color:rgba(245,158,11,0.3)}
+.metric{font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:600;color:var(--text);word-break:break-word}
+.metric.ok{color:var(--good)}
+.metric.fail{color:var(--bad)}
+.label{font-size:.75rem;color:var(--sub);margin-top:4px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.85rem;background:transparent;border:1px solid rgba(255,255,255,.15);border-radius:10px}
+th{background:transparent;color:var(--sub);text-align:left;padding:10px 12px;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}
+td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
+.ok{color:var(--good);font-weight:600}
+.bad{color:var(--bad);font-weight:600}
+.btn{font-family:inherit;padding:6px 12px;border:none;border-radius:6px;cursor:pointer;font-weight:600;text-decoration:none;color:#fff}
+.btn-green{background:#22c55e;}
+.btn-amber{background:#f59e0b;}
+.btn-red{background:#ef4444;}
+.btn-blue{background:#2196F3;}
+</style>
+</head>
+<body>
+<div style="max-width:1100px;margin:auto;">
+  <h1>DB Manager — AutoGhostStory Status &amp; Control</h1>
+  <div class="sub">Real-time • Session 422910 • <span id="todayDate">--</span> • <span id="statusGroup">--</span> • 5 Fixed Running • 10 Scheduled</div>
+  <div class="sub" style="margin-top:10px;color:var(--accent);text-align:center;">
+    <div style="font-family:inherit;font-size:2.4rem;font-weight:800;letter-spacing:2px;line-height:1.1;text-align:center;background:linear-gradient(90deg,#f59e0b,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 22px rgba(245,158,11,.35);">XuyếnChiXàoTỏi 🍃🍃🍃🐋</div>
+    <div id="clock" style="font-size:4rem;font-weight:800;letter-spacing:2px;line-height:1;">--:--:--</div>
+    <div id="date" style="font-size:1.5rem;font-weight:600;margin-top:8px;">--/--/----</div>
+  </div>
+
+  <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:16px;">
+    <div class="card">
+      <h3><span style="color:var(--good);font-weight:bold;">●</span> Status</h3>
+      <div class="metric ok">Cycle: Running (Continuous)</div>
+      <div class="label">No 0h reset • Resolve-Day every 20s</div>
+    </div>
+    <div class="card">
+      <h3><span style="color:var(--good);font-weight:bold;">●</span> <span id="agName">Group 4 (19:45)</span></h3>
+      <div class="metric ok" id="agClients">31-35 NA/COC/XOAI/CHUOI/CAM</div>
+      <div class="label" id="agLabel">Slot 19:45 → 4h active • DB running</div>
+    </div>
+    <div class="card">
+      <h3><span style="color:var(--good);font-weight:bold;">●</span> 5 Fixed</h3>
+      <div class="metric ok">client_1, 3, 13, 14, 15</div>
+      <div class="label">Always running</div>
+    </div>
+    <div class="card">
+      <h3><span style="color:var(--warn);font-weight:bold;">●</span> Monitor</h3>
+      <div class="metric ok">AutoCycle + MonitorActive</div>
+      <div class="label">Self-healing when missing</div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px; padding:12px; background:transparent; border:1px solid rgba(255,255,255,.15); border-radius:10px; font-family:'JetBrains Mono',monospace; font-size:.9rem; color:#ccc;">
+    <b>Quick Actions:</b>
+    <a href="start_cycle.bat" class="btn btn-green" style="margin-right:6px;">▶ Start Cycle</a>
+    <a href="quick_now.bat" class="btn btn-amber" style="margin-right:6px;">⚡ Force Now</a>
+    <a href="quick_stop.bat" class="btn btn-red" style="margin-right:6px;">⏹ Stop</a>
+    <a href="quick_login.bat" class="btn btn-blue" style="margin-right:6px;">🔄 Refresh</a>
+    <a href="quick_check.bat" class="btn btn-green" style="margin-right:6px;">✅ Check</a>
+    <a href="start_cycle.bat" class="btn btn-amber" style="margin-right:6px;">🧹 Clear Log</a>
+  </div>
+
+  <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
+    <div style="flex:2 1 480px; min-width:300px;">
+      <h2>DB Status — All Clients (Real-Time)</h2>
+      <table id="statusTable">
+        <thead><tr><th>Client</th><th>Group / Slot</th></tr></thead>
+        <tbody id="statusBody">
+        </tbody>
+      </table>
+    </div>
+    <div style="flex:1 1 360px; min-width:300px;">
+      <h2>Activity History</h2>
+      <table id="history">
+        <thead><tr><th>Time</th><th>Closed Gr</th><th>Opened Gr</th></tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+  <h2>Master Data — Source of Truth (CSV &amp; AutoCycle Sync)</h2>
+  <div style="margin-bottom:8px;">
+    <button id="btnSaveMaster" class="btn btn-green" style="margin-right:6px;">💾 Save changes</button>
+    <button id="btnExportCsv" class="btn btn-blue">⬇ Export CSV</button>
+    <span id="masterMsg" style="margin-left:10px;color:var(--good);"></span>
+  </div>
+  <table id="masterTable">
+    <thead><tr><th>Client</th><th>Name</th><th>Group</th><th>Slot(close - open)</th><th>Status (Remote)</th></tr></thead>
+    <tbody id="masterBody"></tbody>
+  </table>
+  <h3 style="margin-top:16px;">Group Schedule <button id="btnAddGroup" class="btn btn-amber" style="margin-left:8px;">＋ Add group</button></h3>
+  <table id="schedTable">
+    <thead><tr><th>Group</th><th>Time (open) — window(close - open)</th></tr></thead>
+    <tbody id="schedBody"></tbody>
+  </table>
+
+<script>
+var bounds = [];
+var groupInfo = {};
+function buildModel(){
+  bounds = [];
+  groupInfo = {};
+  var sched = (masterData && masterData.schedule) ? masterData.schedule : [];
+  for (var i=0;i<sched.length;i++){
+    var g = i+1;
+    var parts = (sched[i].time || '00:00').split(':');
+    var h = parseInt(parts[0],10)||0, m = parseInt(parts[1],10)||0;
+    bounds.push({g:g, h:h, m:m});
+    var next = (i+1 < sched.length) ? sched[i+1].time : (sched.length ? sched[0].time : '00:00');
+    var clients = (masterData.clients||[]).filter(function(c){ return c.group === sched[i].group; })
+                                          .map(function(c){ return c.name || c.client; });
+    groupInfo[g] = {
+      name: 'Gr '+g+' ('+sched[i].time+'→'+next+')',
+      clients: clients.join(', '),
+      label: 'Slot '+sched[i].time+' → '+next+' • Running'
+    };
+  }
+}
+function buildStatusTable(){
+  var tb = document.getElementById('statusBody');
+  if (!tb || !masterData) return;
+  tb.innerHTML = '';
+  var sched = masterData.schedule || [];
+  var valid = {'fixed':true};
+  sched.forEach(function(s){ valid[s.group] = true; });
+  (masterData.clients||[]).filter(function(c){ return valid[c.group]; }).forEach(function(c){
+    if (c.group === 'fixed'){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td><b>'+c.client+'</b> ('+c.name+')</td><td>5 Fixed</td>';
+      tb.appendChild(tr);
+    }
+  });
+  sched.forEach(function(s, idx){
+    var g = idx+1;
+    var next = (idx+1 < sched.length) ? sched[idx+1].time : (sched.length ? sched[0].time : '00:00');
+    var label = 'Gr '+g+' ('+s.time+'→'+next+')';
+    (masterData.clients||[]).filter(function(c){ return c.group === s.group; }).forEach(function(c){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td><b>'+c.client+'</b> ('+c.name+')</td><td>'+label+'</td>';
+      tb.appendChild(tr);
+    });
+  });
+}
+function refreshGroupSelects(){
+  if (!masterData) return;
+  var groups = ['fixed'].concat((masterData.schedule||[]).map(function(s){ return s.group; }));
+  groups.push('none');
+  document.querySelectorAll('#masterBody tr').forEach(function(tr){
+    var sel = tr.querySelector('[data-k=group]');
+    if (!sel) return;
+    var cur = sel.value;
+    sel.innerHTML = groups.map(function(g){ var lbl = (g==='none')?'none (awaiting group)':g; return '<option value="'+g+'"'+(g===cur?' selected':'')+'>'+lbl+'</option>'; }).join('');
+  });
+}
+function slotText(group){
+  if (!masterData || !masterData.schedule) return '';
+  var sched = masterData.schedule;
+  if (group === 'fixed') return 'Fixed';
+  if (group === 'none' || !group) return '—';
+  var idx = -1;
+  for (var i=0;i<sched.length;i++){ if (sched[i].group === group){ idx = i; break; } }
+  if (idx < 0) return '—';
+  var open = sched[idx].time;
+  var nxt = sched[(idx+1) % sched.length].time;
+  return nxt + ' - ' + open;
+}
+function refreshSlots(){
+  if (!masterData) return;
+  document.querySelectorAll('#masterBody tr').forEach(function(tr){
+    var sel = tr.querySelector('[data-k=group]');
+    var inp = tr.querySelector('[data-k=slot]');
+    if (sel && inp) inp.value = slotText(sel.value);
+  });
+}
+function refreshSchedWindows(){
+  if (!masterData) return;
+  var rows = document.querySelectorAll('#schedBody tr');
+  rows.forEach(function(tr){
+    var gi = tr.querySelector('[data-k=group]').value;
+    var ti = tr.querySelector('[data-k=time]').value;
+    var idx = -1;
+    for (var i=0;i<masterData.schedule.length;i++){ if (masterData.schedule[i].group === gi){ idx = i; break; } }
+    var nxt = (idx >= 0) ? masterData.schedule[(idx+1) % masterData.schedule.length].time : ti;
+    var span = tr.querySelector('.swin');
+    if (span) span.textContent = '(close ' + nxt + ' - open ' + ti + ')';
+  });
+}
+function onSchedChange(){
+  masterData.schedule = [];
+  document.querySelectorAll('#schedBody tr').forEach(function(tr){
+    var g = tr.querySelector('[data-k=group]').value;
+    var t = tr.querySelector('[data-k=time]').value;
+    masterData.schedule.push({group:g, time:t});
+  });
+  buildModel(); buildStatusTable(); refreshGroupSelects(); refreshSlots(); refreshSchedWindows();
+}
+function activeGroup(){
+  var now = new Date();
+  var mins = now.getHours()*60 + now.getMinutes();
+  var act = bounds.length ? bounds[bounds.length-1].g : 0;
+  for (var i=0;i<bounds.length;i++){ if (mins >= bounds[i].h*60+bounds[i].m) act = bounds[i].g; }
+  return act;
+}
+function tagRows(){
+  var rows = document.querySelectorAll('#statusTable tbody tr');
+  for (var i=0;i<rows.length;i++){
+    var td = rows[i].cells[1];
+    if (!td) continue;
+    if (td.dataset.base === undefined) td.dataset.base = td.textContent;
+    var txt = td.dataset.base;
+    var grp = 'fixed';
+    var m = txt.match(/Gr\s*(\d)/);
+    if (m) grp = m[1];
+    var act = activeGroup();
+    var isRun = (grp === 'fixed') || (parseInt(grp) === act);
+    if (isRun) { td.textContent = txt + '  ✅ RUNNING'; td.style.color = 'var(--good)'; }
+    else { td.textContent = txt; td.style.color = ''; }
+  }
+}
+function updateActiveCard(){
+  var g = activeGroup();
+  var info = groupInfo[g];
+  var n = document.getElementById('agName');
+  var c = document.getElementById('agClients');
+  var l = document.getElementById('agLabel');
+  if (info){
+    if (n) n.textContent = info.name;
+    if (c) c.textContent = info.clients;
+    if (l) l.textContent = info.label;
+  }
+  var sg = document.getElementById('statusGroup');
+  if (sg) sg.textContent = (info ? info.name + ' Active' : '--');
+  var td = document.getElementById('todayDate');
+  if (td) { var d = new Date(); var p = function(x){ return (x<10?'0':'')+x; }; td.textContent = 'Today ' + d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()); }
+}
+function tick(){
+  var d = new Date();
+  var p = function(n){ return (n<10?'0':'') + n; };
+  var clk = document.getElementById('clock');
+  var dt = document.getElementById('date');
+  if (clk) clk.textContent = p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  if (dt) dt.textContent = p(d.getDate()) + '/' + p(d.getMonth()+1) + '/' + d.getFullYear();
+}
+function idxGroup(idx){
+  idx = parseInt(idx);
+  if (idx>=0 && idx<=4) return '5 Fixed';
+  if (idx>=5 && idx<=9) return 'Gr 3';
+  if (idx>=10 && idx<=14) return 'Gr 4';
+  if (idx>=15 && idx<=19) return 'Gr 1';
+  if (idx>=20 && idx<=24) return 'Gr 2';
+  return 'idx'+idx;
+}
+function parseGroups(str){
+  if (!str) return '';
+  var parts = str.split(',');
+  var seen = {};
+  parts.forEach(function(p){ var g = idxGroup(p.trim()); seen[g]=true; });
+  return Object.keys(seen).join(', ');
+}
+function loadHistory(){
+  fetch('cache/cycle.log').then(function(r){ return r.text(); }).then(function(txt){
+    var lines = txt.split('\n');
+    var rows = [];
+    for (var i=0;i<lines.length;i++){
+      var line = lines[i];
+      var m = line.match(/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] SLOT .*DONE \(close=([^)]*) open=([^)]*)\)/);
+      if (m){ rows.push({ts:m[1], off:parseGroups(m[2]), on:parseGroups(m[3])}); }
+    }
+    var tb = document.getElementById('historyBody');
+    if (!tb) return;
+    tb.innerHTML = '';
+    for (var j=0;j<rows.length;j++){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>'+rows[j].ts+'</td><td>'+rows[j].off+'</td><td>'+rows[j].on+'</td>';
+      tb.appendChild(tr);
+    }
+  }).catch(function(){});
+}
+var masterData = null;
+function grpOptions(sel){
+  var groups = ['fixed'];
+  if (masterData && masterData.schedule) masterData.schedule.forEach(function(s){ groups.push(s.group); });
+  groups.push('none');
+  return groups.map(function(g){ var lbl = (g==='none')?'none (awaiting group)':g; return '<option value="'+g+'"'+(g===sel?' selected':'')+'>'+lbl+'</option>'; }).join('');
+}
+function loadMaster(){
+  fetch('clients_master.json?t='+Date.now()).then(function(r){return r.json();}).then(function(d){
+    masterData = d;
+    buildModel();
+    var tb = document.getElementById('masterBody'); tb.innerHTML='';
+    d.clients.forEach(function(c){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>'+c.client+'<input type="hidden" data-k="client" value="'+c.client+'"></td>'+
+        '<td><input data-k="name" style="width:120px;background:#222;color:#fff;border:1px solid #444;"></td>'+
+        '<td><select data-k="group" style="background:#222;color:#fff;">'+grpOptions(c.group)+'</select></td>'+
+        '<td><input data-k="slot" readonly style="width:90px;background:#222;color:#fff;border:1px solid #444;"></td>'+
+        '<td class="mstatus" data-client="'+c.client+'"></td>';
+      tr.querySelector('[data-k=name]').value = c.name || '';
+      tr.querySelector('[data-k=slot]').value = c.slot || '';
+      tb.appendChild(tr);
+    });
+    buildStatusTable();
+    refreshGroupSelects();
+    refreshSlots();
+    refreshMasterStatus();
+    var sb = document.getElementById('schedBody'); sb.innerHTML='';
+    d.schedule.forEach(function(s){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td><input data-k="group" value="'+s.group+'" style="width:90px;background:#222;color:#fff;border:1px solid #444;" onchange="onSchedChange()"></td>'+
+        '<td><input data-k="time" value="'+s.time+'" style="width:70px;background:#222;color:#fff;border:1px solid #444;" onchange="onSchedChange()"> <span class="swin" style="color:var(--sub);font-size:.8rem;"></span></td>';
+      sb.appendChild(tr);
+    });
+    refreshSchedWindows();
+  }).catch(function(){});
+}
+function refreshMasterStatus(){
+  fetch('client_database.json?t='+Date.now()).then(function(r){return r.json();}).then(function(d){
+    var map = {};
+    d.clients.forEach(function(c){ map[c.client] = c.status; });
+    document.querySelectorAll('.mstatus').forEach(function(td){
+      var st = map[td.dataset.client] || 'unknown';
+      td.textContent = st;
+      td.className = 'mstatus ' + (st === 'running' ? 'ok' : (st === 'offline' ? 'bad' : ''));
+    });
+  }).catch(function(){});
+}
+function collectMaster(){
+  var clients = [];
+  document.querySelectorAll('#masterBody tr').forEach(function(tr){
+    var c = {};
+    tr.querySelectorAll('[data-k]').forEach(function(el){ c[el.dataset.k] = el.value; });
+    clients.push(c);
+  });
+  var sched = [];
+  document.querySelectorAll('#schedBody tr').forEach(function(tr){
+    var s = {};
+    tr.querySelectorAll('[data-k]').forEach(function(el){ s[el.dataset.k] = el.value; });
+    sched.push(s);
+  });
+  return { clients: clients, schedule: sched };
+}
+document.getElementById('btnSaveMaster').addEventListener('click', function(){
+  var data = collectMaster();
+  fetch('/api/master', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)})
+    .then(function(r){ return r.text(); }).then(function(t){ document.getElementById('masterMsg').textContent = 'Saved: '+t; loadMaster(); });
+});
+document.getElementById('btnExportCsv').addEventListener('click', function(){
+  var rows = [['client','name','group','slot_time']];
+  document.querySelectorAll('#masterBody tr').forEach(function(tr){
+    var r=[]; tr.querySelectorAll('[data-k]').forEach(function(el){ r.push(el.value); }); rows.push(r);
+  });
+  var csv = rows.map(function(r){return r.join(',');}).join('\n');
+  var blob = new Blob([csv], {type:'text/csv'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='clients_master.csv'; a.click();
+});
+document.getElementById('btnAddGroup').addEventListener('click', function(){
+  if (!masterData) return;
+  masterData.schedule = masterData.schedule || [];
+  var maxn = 0;
+  masterData.schedule.forEach(function(s){ var m=(''+s.group).match(/gr(\d+)/i); if(m){ var n=parseInt(m[1],10); if(n>maxn) maxn=n; } });
+  var newg = 'gr'+(maxn+1);
+  masterData.schedule.push({group:newg, time:'00:00'});
+  var sb = document.getElementById('schedBody');
+  var tr = document.createElement('tr');
+  tr.innerHTML = '<td><input data-k="group" value="'+newg+'" style="width:90px;background:#222;color:#fff;border:1px solid #444;" onchange="onSchedChange()"></td>'+
+    '<td><input data-k="time" value="00:00" style="width:80px;background:#222;color:#fff;border:1px solid #444;" onchange="onSchedChange()"></td>';
+  sb.appendChild(tr);
+  buildModel(); buildStatusTable(); refreshGroupSelects(); refreshSlots(); refreshSchedWindows();
+});
+tagRows(); updateActiveCard(); tick(); loadHistory(); loadMaster();
+setInterval(function(){ tagRows(); updateActiveCard(); tick(); }, 1000);
+setInterval(loadHistory, 15000);
+setInterval(refreshMasterStatus, 5000);
+</script>
+</body>
+</html>
