@@ -7,6 +7,7 @@ Xây hệ thống quản lý client Auto Ghost Story trên PC gồm Agent + Web 
 ## 1. Nguyên tắc kiến trúc
 
 - `clients_master.json` là canonical configuration.
+- Schema master (đã chốt): `clients[] = {client, name, group, slot}`; `schedule[] = {time, group}`. `slot` = giờ mở (open) của nhóm (bằng `schedule.time` của nhóm đó). Giờ đóng (close) được suy từ giờ mở của nhóm kế tiếp theo thứ tự thời gian; nếu `close <= open` thì qua ngày (wraparound). KHÔNG dùng trường `start`/`end`/`endDayOffset` riêng biệt.
 - Runtime state và control state tách khỏi master.
 - Không dùng `rowIndex` làm identity.
 - `desiredState` là computed/read-only từ scheduler.
