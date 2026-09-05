@@ -8,7 +8,7 @@ $svc.Connect()
 $root = $svc.GetFolder('\')
 
 $task = $svc.NewTask(0)
-$task.RegistrationInfo.Description = 'AUTORELOG: enforce AGS client schedule every minute (local process control).'
+$task.RegistrationInfo.Description = 'AUTORELOG: disabled; clients must be opened through the remote client row.'
 $task.RegistrationInfo.Author = "$env:USERDOMAIN\$env:USERNAME"
 
 # Run only when the user is logged on (so launched qnyh.exe appears on the desktop session)
@@ -18,7 +18,7 @@ $principal.UserId = "$env:USERDOMAIN\$env:USERNAME"
 $principal.RunLevel = 0
 
 $set = $task.Settings
-$set.Enabled = $true
+$set.Enabled = $false
 $set.StartWhenAvailable = $true
 $set.MultipleInstances = 3
 $set.ExecutionTimeLimit = 'PT0S'
@@ -36,7 +36,6 @@ $trigger.Repetition.Duration = ''   # indefinite
 $root.RegisterTaskDefinition('AUTORELOG-Executor', $task, 6, $null, $null, 3)
 Write-Host 'Task AUTORELOG-Executor registered.'
 
-# Run once now to verify
+# Keep this task disabled. Local process control can reorder remote client IDs.
 $reg = $root.GetTask('AUTORELOG-Executor')
-$reg.Run($null)
-Write-Host 'Triggered initial run. Check executor.log shortly.'
+Write-Host ("Task AUTORELOG-Executor enabled: {0}" -f $reg.Enabled)

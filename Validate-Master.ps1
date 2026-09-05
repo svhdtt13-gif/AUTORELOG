@@ -50,9 +50,9 @@ foreach ($c in $clients) {
   if (-not $groupMembers.ContainsKey($g)) { $groupMembers[$g] = @() }
   $groupMembers[$g] += $c.client
 
-  # orphan detection (plan B6)
+  # orphan detection (plan B6): client_68 / 'Ghost Story PC*' MUST be group=none
   if ($c.client -eq 'client_68' -or [string]$c.name -like '*Ghost Story PC*') {
-    if ($g -ne 'none') { $report.warnings.Add("ORPHAN candidate $($c.client) should be group=none (found '$g')") }
+    if ($g -ne 'none') { $report.errors.Add("ORPHAN candidate $($c.client) MUST be group=none (found '$g')") }
     else { $report.info.Add("ORPHAN candidate $($c.client) correctly group=none -> scheduler hard-blocked") }
   }
   # fixed must not carry a slot (plan: always-on, no auto-stop)

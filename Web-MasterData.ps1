@@ -43,9 +43,7 @@ function Test-InstanceRunning($cid) {
   return $false
 }
 function Start-Instance($info) {
-  $cmd = $info.cmd; $args = $cmd
-  if ($args -match '^"([^"]+)"\s*(.*)$') { $args = $Matches[2] } else { $args = $args.Substring($info.exe.Length).Trim() }
-  Start-Process -FilePath $info.exe -ArgumentList $args -WorkingDirectory $info.wd -WindowStyle Minimized
+  throw 'LOCAL_START_BLOCKED: use the remote client row to open a client'
 }
 function Get-Overrides() {
   $o = @{}; $p = Join-Path $ScriptDir 'overrides.json'
@@ -152,7 +150,7 @@ function load(){
   d.clients.forEach(c=>{
    var tr=document.createElement('tr');
    var dcls=c.drift&&c.drift!=='-'?'down':'';
-   tr.innerHTML='<td>'+c.client+'</td><td>'+c.name+'</td><td>'+c.group+'</td><td>'+c.desired+'</td><td class="'+(c.running?'up':'')+'">'+(c.running?'yes':'no')+'</td><td class="'+(c.connected?'up':'')+'">'+(c.connected?'yes':'no')+'</td><td>'+(c.override||'-')+'</td><td class="'+dcls+'">'+(c.drift||'-')+'</td>';
+    tr.innerHTML='<td>'+c.client+'</td><td>'+c.name+'</td><td>'+c.group+'</td><td>'+c.desired+'</td><td class="'+(c.running?'up':'')+'">'+(c.running?'yes':'no')+'</td><td class="'+(c.connected?'up':'')+'">'+(c.connected?'yes':'no')+'</td><td>'+(c.override||'-')+'</td><td class="'+dcls+'">'+(c.drift||'-')+'</td>';
    var td=document.createElement('td');
    ['start','stop','restart'].forEach(a=>{var b=document.createElement('button');b.textContent=a;b.onclick=()=>ctrl(c.client,a);td.appendChild(b);});
    tr.appendChild(td); tb.appendChild(tr);
@@ -233,13 +231,8 @@ function Handle-Request($req, $resp) {
         if ($pidv) { Stop-Process -Id $pidv -Force }
         Write-Override $cid 'stopped' $mins
       } elseif ($action -eq 'start' -or $action -eq 'restart') {
-        if ($action -eq 'restart') {
-          $procs = Get-CimInstance Win32_Process -Filter "Name='qnyh.exe'" -ErrorAction SilentlyContinue
-          foreach ($p in $procs) { if ($p.CommandLine -and (($p.CommandLine -split '\s+') -contains "-instance:$cid")) { Stop-Process -Id $p.ProcessId -Force } }
-        }
-        if ($map.ContainsKey($cid)) { Start-Instance $map[$cid] }
-        else { Write-Text $resp ('{"ok":false,"error":"no launch cmd for ' + $cid + '"}') 'application/json' 400; return }
-        Write-Override $cid 'running' $mins
+        Write-Text $resp '{"ok":false,"error":"local qnyh start blocked; use the remote client row"}' 'application/json' 403
+        return
       } else { Write-Text $resp '{"ok":false,"error":"bad action"}' 'application/json' 400; return }
       Write-Text $resp '{"ok":true}' 'application/json'
     } catch { WLog ('control err ' + $_); Write-Text $resp '{"ok":false,"error":"server"}' 'application/json' 500 }

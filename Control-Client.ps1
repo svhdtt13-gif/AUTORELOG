@@ -34,9 +34,7 @@ function Test-InstanceRunning($cid) {
   return $null
 }
 function Start-Instance($info) {
-  $cmd = $info.cmd; $args = $cmd
-  if ($args -match '^"([^"]+)"\s*(.*)$') { $args = $Matches[2] } else { $args = $args.Substring($info.exe.Length).Trim() }
-  Start-Process -FilePath $info.exe -ArgumentList $args -WorkingDirectory $info.wd -WindowStyle Minimized
+  throw 'LOCAL_START_BLOCKED: use the remote client row to open a client'
 }
 
 $cid = $Client
@@ -56,6 +54,10 @@ if ($Clear) {
   else { $ov | ConvertTo-Json | Set-Content $OverridePath -Encoding UTF8 }
   Write-Host ("Cleared override for $cid (returns to schedule).")
   exit 0
+}
+
+if (-not $WhatIf -and ($Action -eq 'start' -or $Action -eq 'restart')) {
+  throw 'LOCAL_START_BLOCKED: use the remote client row to open a client'
 }
 
 $pidv = Test-InstanceRunning $cid

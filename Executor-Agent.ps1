@@ -1,6 +1,6 @@
 param(
   [string]$MasterPath = (Join-Path $PSScriptRoot 'clients_master.json'),
-  [string]$ScenePath  = 'C:\Users\ADMIN\Desktop\MIUUUUUUUUUU.json',
+  [string]$ScenePath  = 'C:\Users\ADMIN\Desktop\MIUUUUUUUUUUUU.json',
   [switch]$Apply
 )
 $ErrorActionPreference = 'Stop'
@@ -47,11 +47,7 @@ function Test-InstanceRunning($cid) {
 }
 
 function Start-Instance($info) {
-  $cmd = $info.cmd
-  $args = $cmd
-  if ($args -match '^"([^"]+)"\s*(.*)$') { $args = $Matches[2] }
-  else { $args = $args.Substring($info.exe.Length).Trim() }
-  Start-Process -FilePath $info.exe -ArgumentList $args -WorkingDirectory $info.wd -WindowStyle Minimized
+  throw 'LOCAL_START_BLOCKED: open clients only through the remote client row; never start qnyh.exe locally'
 }
 
 function Stop-Instance($runPid) {
@@ -100,7 +96,7 @@ $zombieCooldownMin = 15
 $zombieMaxAttempts = 3
 $graceSec = 120
 
-Write-Host ("Now (Asia/Ho_Chi_Minh): {0:HH:mm}  Apply={1}" -f $now, $Apply)
+Write-Host ("Now (Asia/Ho_Chi_Minh): {0:HH:mm}  Apply={1}  LocalStart=BLOCKED" -f $now, $Apply)
 Log ("RUN Apply=$Apply Now={0:HH:mm} TZ=Asia/Ho_Chi_Minh" -f $now)
 $cStart = 0; $cStop = 0; $cNone = 0; $cSkip = 0; $cCrash = 0; $cFail = 0; $cZombie = 0
 $newRunning = @{}
@@ -171,8 +167,7 @@ foreach ($c in @($master.clients)) {
       }
       if ($do) {
         try {
-          if ($runningPid) { Stop-Instance $runningPid }
-          Start-Instance $launch[$cid]
+          throw 'LOCAL_START_BLOCKED: zombie recovery cannot restart locally; use the remote client row'
           $att = if ($entry) { $entry.attempts + 1 } else { 1 }
           $zr[$cid] = [ordered]@{ last = Get-Date; attempts = $att; broken = $false }
           Write-Host "    ZOMBIE-RESTART $cid (attempt $att)"; Log "ZOMBIE-RESTART $cid attempt=$att"

@@ -1,47 +1,242 @@
 {
-  "meta": {
-    "schemaVersion": "1.0",
-    "timezone": "Asia/Ho_Chi_Minh",
-    "source": "Derived from runtime_registry.json + lich trinh tat mo.xlsx (AUTORELOG plan v4, B4)",
-    "notes": "Canonical configuration. Policy is DERIVED from group: fixed->always-on, none->ignored, scheduled->from group window. slot = group open time for scheduled groups. client_68 removed 2026-08-30."
-  },
-  "schedule": [
-    { "time": "04:00", "group": "gr1" },
-    { "time": "08:00", "group": "gr2" },
-    { "time": "12:30", "group": "gr3" },
-    { "time": "19:45", "group": "gr4" }
-  ],
-  "clients": [
-    { "client": "client_14", "name": "XuyenChiXaoToi", "group": "fixed",  "slot": null },
-    { "client": "client_15", "name": "Bong",            "group": "fixed",  "slot": null },
-    { "client": "client_3",  "name": "ComChanNuocMat",  "group": "fixed",  "slot": null },
-    { "client": "client_1",  "name": "BoGiaDuaNon",     "group": "fixed",  "slot": null },
-    { "client": "client_13", "name": "CayBangNon",      "group": "fixed",  "slot": null },
-
-    { "client": "client_41", "name": "HANMI",       "group": "gr1", "slot": "04:00" },
-    { "client": "client_42", "name": "Ahihi10",     "group": "gr1", "slot": "04:00" },
-    { "client": "client_43", "name": "Ahihi6",      "group": "gr1", "slot": "04:00" },
-    { "client": "client_44", "name": "Ahihi8",      "group": "gr1", "slot": "04:00" },
-    { "client": "client_45", "name": "Ahihi9",      "group": "gr1", "slot": "04:00" },
-
-    { "client": "client_46", "name": "MachNhi",     "group": "gr2", "slot": "08:00" },
-    { "client": "client_47", "name": "DoanVanThu",  "group": "gr2", "slot": "08:00" },
-    { "client": "client_48", "name": "LieuAnh",     "group": "gr2", "slot": "08:00" },
-    { "client": "client_49", "name": "BinhDuc",     "group": "gr2", "slot": "08:00" },
-    { "client": "client_50", "name": "DieuLinh",    "group": "gr2", "slot": "08:00" },
-
-    { "client": "client_8",  "name": "khoqua10", "group": "gr3", "slot": "12:30" },
-    { "client": "client_6",  "name": "Me",       "group": "gr3", "slot": "12:30" },
-    { "client": "client_5",  "name": "khoqua07", "group": "gr3", "slot": "12:30" },
-    { "client": "client_2",  "name": "khoqua08", "group": "gr3", "slot": "12:30" },
-    { "client": "client_7",  "name": "khoqua09", "group": "gr3", "slot": "12:30" },
-
-    { "client": "client_31", "name": "NA",    "group": "gr4", "slot": "19:45" },
-    { "client": "client_32", "name": "COC",   "group": "gr4", "slot": "19:45" },
-    { "client": "client_33", "name": "XOAI",  "group": "gr4", "slot": "19:45" },
-    { "client": "client_34", "name": "CHUOI", "group": "gr4", "slot": "19:45" },
-    { "client": "client_35", "name": "CAM",   "group": "gr4", "slot": "19:45" },
-
-    { "client": "client_51", "name": "Emm.Miuu",        "group": "none", "slot": null }
-  ]
+    "meta": {
+        "extracted_at": "2026-09-05 15:26:34",
+        "extraction_method": "WebSocket scr_list_res realtime (manual sync)",
+        "source": "remote360auto.net (Auto Ghost Story, product_id=73, room=e1c51deba15917ba)",
+        "total_remote_clients": 26,
+        "updated_at": "2026-09-05 15:27:32",
+        "updated_by": "public web"
+    },
+    "schedule": [
+        {
+            "group": "HAMI",
+            "time": "04:00",
+            "close": "08:00"
+        },
+        {
+            "group": "MNHI",
+            "time": "08:00",
+            "close": "12:30"
+        },
+        {
+            "group": "MIE",
+            "time": "12:30",
+            "close": "19:45"
+        },
+        {
+            "group": "NA",
+            "time": "19:45",
+            "close": "04:00"
+        }
+    ],
+    "clients": [
+        {
+            "client": "client_63",
+            "name": "XuyếnChiXàoTỏi",
+            "group": "fixed",
+            "status": "offline",
+            "remote_name": "XuyếnChiXàoTỏi",
+            "selected": true
+        },
+        {
+            "client": "client_15",
+            "name": "๖ۣۜBống♡⊹˚₊",
+            "group": "fixed",
+            "status": "offline",
+            "remote_name": "๖ۣۜBống♡⊹˚₊",
+            "selected": true
+        },
+        {
+            "client": "client_64",
+            "name": "CơmChanNướcMắt",
+            "group": "fixed",
+            "status": "offline",
+            "remote_name": "CơmChanNướcMắt",
+            "selected": true
+        },
+        {
+            "client": "client_1",
+            "name": "BơGiàDừaNon",
+            "group": "fixed",
+            "status": "offline",
+            "remote_name": "BơGiàDừaNon",
+            "selected": true
+        },
+        {
+            "client": "client_65",
+            "name": "CâyBàngNon",
+            "group": "fixed",
+            "status": "offline",
+            "remote_name": "CâyBàngNon",
+            "selected": true
+        },
+        {
+            "client": "client_8",
+            "name": "khoqua10",
+            "group": "MIE",
+            "status": "offline",
+            "remote_name": "khoqua10",
+            "selected": true
+        },
+        {
+            "client": "client_6",
+            "name": "りMίε࿐~˙",
+            "group": "MIE",
+            "status": "offline",
+            "remote_name": "りMίε࿐~˙",
+            "selected": true
+        },
+        {
+            "client": "client_67",
+            "name": "khoqua07",
+            "group": "MIE",
+            "status": "offline",
+            "remote_name": "khoqua07",
+            "selected": true
+        },
+        {
+            "client": "client_68",
+            "name": "khoqua08",
+            "group": "MIE",
+            "status": "offline",
+            "remote_name": "khoqua08",
+            "selected": true
+        },
+        {
+            "client": "client_66",
+            "name": "khoqua09",
+            "group": "MIE",
+            "status": "offline",
+            "remote_name": "khoqua09",
+            "selected": true
+        },
+        {
+            "client": "client_31",
+            "name": "NA",
+            "group": "NA",
+            "status": "offline",
+            "remote_name": "NA",
+            "selected": true
+        },
+        {
+            "client": "client_32",
+            "name": "COC",
+            "group": "NA",
+            "status": "offline",
+            "remote_name": "CÓC",
+            "selected": true
+        },
+        {
+            "client": "client_33",
+            "name": "XOAI",
+            "group": "NA",
+            "status": "offline",
+            "remote_name": "XOÀI",
+            "selected": true
+        },
+        {
+            "client": "client_34",
+            "name": "CHUOI",
+            "group": "NA",
+            "status": "offline",
+            "remote_name": "CHUỐI",
+            "selected": true
+        },
+        {
+            "client": "client_35",
+            "name": "CAM",
+            "group": "NA",
+            "status": "offline",
+            "remote_name": "CAM",
+            "selected": true
+        },
+        {
+            "client": "client_52",
+            "name": "HANMI",
+            "group": "HAMI",
+            "status": "offline",
+            "remote_name": "ʚнαмιиᰔᩚ",
+            "selected": true
+        },
+        {
+            "client": "client_53",
+            "name": "Ahihi10",
+            "group": "HAMI",
+            "status": "offline",
+            "remote_name": "Ahihi10",
+            "selected": true
+        },
+        {
+            "client": "client_54",
+            "name": "Ahihi6",
+            "group": "HAMI",
+            "status": "offline",
+            "remote_name": "Ahihi6",
+            "selected": true
+        },
+        {
+            "client": "client_55",
+            "name": "Ahihi8",
+            "group": "HAMI",
+            "status": "offline",
+            "remote_name": "Ahihi8",
+            "selected": true
+        },
+        {
+            "client": "client_56",
+            "name": "Ahihi9",
+            "group": "HAMI",
+            "status": "offline",
+            "remote_name": "Ahihi9",
+            "selected": true
+        },
+        {
+            "client": "client_46",
+            "name": "MachNhi",
+            "group": "MNHI",
+            "status": "offline",
+            "remote_name": "MạchNhi",
+            "selected": true
+        },
+        {
+            "client": "client_47",
+            "name": "DoanVanThu",
+            "group": "MNHI",
+            "status": "offline",
+            "remote_name": "ĐoànVânThư",
+            "selected": true
+        },
+        {
+            "client": "client_48",
+            "name": "LieuAnh",
+            "group": "MNHI",
+            "status": "offline",
+            "remote_name": "LiêuÁnh",
+            "selected": true
+        },
+        {
+            "client": "client_49",
+            "name": "BinhDuc",
+            "group": "MNHI",
+            "status": "offline",
+            "remote_name": "BànhĐức",
+            "selected": true
+        },
+        {
+            "client": "client_50",
+            "name": "DieuLinh",
+            "group": "MNHI",
+            "status": "offline",
+            "remote_name": "ĐiềuLinh",
+            "selected": true
+        },
+        {
+            "client": "client_51",
+            "name": "EmmMiuu",
+            "group": "none",
+            "status": "offline",
+            "remote_name": "Emm•Miuu",
+            "selected": false
+        }
+    ]
 }

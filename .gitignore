@@ -5,6 +5,19 @@ remote.txt
 notify.json
 overrides.json
 web.secret
+feedback.token.xml
+tools/config.json
+tools/notify.json
+tools/remote_session.json
+tools/remote_rooms.json
+tools/feedback.token.xml
+tools/.phase0.sha
+tools/*.log
+tools/*snapshot*.json
+tools/*Snapshot*.json
+tools/*capture*.json
+*.jsonl
+*.log
 *.exe
 
 # Runtime logs & cache
