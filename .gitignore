@@ -10,6 +10,10 @@ tools/config.json
 tools/notify.json
 tools/remote_session.json
 tools/remote_rooms.json
+tools/client_database.json
+tools/client_names_live.json
+tools/roster.json
+tools/after_menu_attempt1.json
 tools/feedback.token.xml
 tools/.phase0.sha
 tools/*.log
